@@ -19,7 +19,7 @@ func (cmd *Kafkactl) GetBrokersCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "brokers",
 		Args:  cobra.ExactArgs(0),
-		Short: "List all Kafka brokers",
+		Short: "List all active Kafka brokers as retrieved from cluster metadata",
 		RunE: func(*cobra.Command, []string) error {
 			encoding := viper.GetString("output")
 			return cmd.getBrokers(encoding)
