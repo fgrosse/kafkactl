@@ -39,17 +39,19 @@ add or remove new configuration contexts using the 'kafkactl config add-context'
   # Toggle between your current config and your previous config
   kafkactl context -
 `,
-		RunE: cmd.runContextCommand,
+		RunE: cmd.runContextCmd,
 	}
 
 	contextCmd.Flags().StringP("output", "o", "short", "Output format. One of json|yaml|table|raw|short")
 
-	contextCmd.PreRunE = cmd.requireConfiguredContext
-
 	return contextCmd
 }
 
-func (cmd *Kafkactl) runContextCommand(cc *cobra.Command, args []string) error {
+func (cmd *Kafkactl) runContextCmd(cc *cobra.Command, args []string) error {
+	if err := cmd.requireConfiguredContext(); err != nil {
+		return err
+	}
+
 	output := viper.GetString("output")
 	setContext := len(args) == 1
 

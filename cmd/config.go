@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path/filepath"
 
@@ -175,4 +176,26 @@ func (conf *Configuration) toggleContext() error {
 
 	conf.CurrentContext, conf.PreviousContext = conf.PreviousContext, conf.CurrentContext
 	return nil
+}
+
+func (conf *Configuration) Brokers() []string {
+	var brokers []string
+	for _, c := range conf.Contexts {
+		if c.Name != conf.CurrentContext {
+			continue
+		}
+
+		for _, addr := range c.Brokers {
+			brokers = append(brokers, ensurePort(addr))
+		}
+	}
+	return brokers
+}
+
+func ensurePort(addr string) string {
+	u, err := url.Parse("kafka://" + addr)
+	if err == nil && u.Port() == "" {
+		addr += ":9092"
+	}
+	return addr
 }

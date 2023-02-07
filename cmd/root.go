@@ -1,12 +1,14 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/Shopify/sarama"
 	"github.com/spf13/cobra"
@@ -14,7 +16,7 @@ import (
 )
 
 type Kafkactl struct {
-	root   *cobra.Command
+	*cobra.Command
 	logger *log.Logger
 	debug  *log.Logger
 	conf   Configuration
@@ -26,23 +28,24 @@ func New() *Kafkactl {
 	cmd := &Kafkactl{
 		logger: log.New(os.Stderr, "", 0),
 		debug:  log.New(io.Discard, "", 0),
-		root: &cobra.Command{
+		Command: &cobra.Command{
 			Use:   "kafkactl",
 			Short: "kafkactl is a command line tool to interact with an Apache Kafka cluster",
 		},
 	}
-	cmd.root.SilenceErrors = true
+	cmd.SilenceErrors = true
 
-	flags := cmd.root.PersistentFlags()
+	flags := cmd.PersistentFlags()
 	flags.String("config", defaultConfigPath, "path to kafkactl config file")
 	flags.String("context", "", `the name of the kafkactl context to use (defaults to "current_context" field from config file)`)
 	flags.BoolP("verbose", "v", false, "enable verbose output")
 	viper.BindPFlags(flags)
 
-	cmd.root.AddCommand(cmd.ConfigCmd())
-	cmd.root.AddCommand(cmd.ContextCmd())
+	cmd.AddCommand(cmd.ConfigCmd())
+	cmd.AddCommand(cmd.ContextCmd())
+	cmd.AddCommand(cmd.GetCmd())
 
-	cmd.root.PersistentPreRunE = cmd.initConfig
+	cmd.PersistentPreRunE = cmd.initConfig
 
 	return cmd
 }
@@ -69,14 +72,58 @@ func (cmd *Kafkactl) initConfig(cc *cobra.Command, args []string) error {
 	return nil
 }
 
-func (cmd *Kafkactl) Execute() error {
-	return cmd.root.Execute()
-}
-
-func (cmd *Kafkactl) requireConfiguredContext(*cobra.Command, []string) error {
+func (cmd *Kafkactl) requireConfiguredContext() error {
 	if len(cmd.conf.Contexts) == 0 {
 		return fmt.Errorf("this command requires at least one configured context. Please use kafkactl config --help to get started")
 	}
 
 	return nil
+}
+
+func (cmd *Kafkactl) connectClient() (sarama.Client, error) {
+	if err := cmd.requireConfiguredContext(); err != nil {
+		return nil, err
+	}
+
+	brokers := cmd.conf.Brokers()
+
+	if len(brokers) == 0 {
+		return nil, errors.New("need at least one broker")
+	}
+
+	// TODO: close client connection when context is closed?
+
+	cmd.debug.Printf("Establishing initial connection to %q", brokers)
+	return sarama.NewClient(brokers, saramaConfig())
+}
+
+func (cmd *Kafkactl) connectAdmin() (sarama.ClusterAdmin, error) {
+	if err := cmd.requireConfiguredContext(); err != nil {
+		return nil, err
+	}
+
+	brokers := cmd.conf.Brokers()
+
+	if len(brokers) == 0 {
+		return nil, errors.New("need at least one broker")
+	}
+
+	// TODO: close client connection when context is closed?
+
+	return sarama.NewClusterAdmin(brokers, saramaConfig())
+}
+
+func saramaConfig() *sarama.Config {
+	conf := sarama.NewConfig()
+	conf.Version = sarama.V1_1_0_0
+	conf.ClientID = "kafkactl"
+
+	conf.Net.DialTimeout = 30 * time.Second
+	conf.Net.ReadTimeout = 120 * time.Second
+	conf.Net.WriteTimeout = 125 * time.Second
+	conf.Admin.Timeout = 30 * time.Second
+
+	conf.Metadata.Full = true
+
+	return conf
 }

@@ -15,7 +15,7 @@ func (cmd *Kafkactl) ConfigCmd() *cobra.Command {
 		Use:   "add-context <NAME>",
 		Args:  cobra.ExactArgs(1),
 		Short: "Add a new Kafka cluster to your configuration",
-		RunE:  cmd.runConfigAddContextCommand,
+		RunE:  cmd.runConfigAddContextCmd,
 	}
 
 	addContextCmd.Flags().StringSliceP("broker", "b", nil, "Kafka Broker address")
@@ -26,7 +26,7 @@ func (cmd *Kafkactl) ConfigCmd() *cobra.Command {
 	return configCmd
 }
 
-func (cmd *Kafkactl) runConfigAddContextCommand(_ *cobra.Command, args []string) error {
+func (cmd *Kafkactl) runConfigAddContextCmd(_ *cobra.Command, args []string) error {
 	name := args[0]
 	brokers := viper.GetStringSlice("broker")
 	err := cmd.conf.AddContext(name, brokers...)

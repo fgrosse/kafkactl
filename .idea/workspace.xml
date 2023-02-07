@@ -57,9 +57,14 @@
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/cmd" />
+      <recent name="$PROJECT_DIR$/cmd/get" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/cmd" />
+      <recent name="$PROJECT_DIR$/cmd/context" />
     </key>
   </component>
-  <component name="RunManager" selected="Go Test.go test cmd">
+  <component name="RunManager" selected="Go Test.TestConfiguration_Brokers in github.com/fgrosse/kafkactl/cmd">
     <configuration default="true" type="GoApplicationRunConfiguration" factoryName="Go Application">
       <module name="kafkactl" />
       <working_directory value="$PROJECT_DIR$" />
@@ -67,6 +72,18 @@
       <package value="kafkactl" />
       <directory value="$PROJECT_DIR$" />
       <filePath value="$PROJECT_DIR$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="TestConfiguration_Brokers in github.com/fgrosse/kafkactl/cmd" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="kafkactl" />
+      <working_directory value="$PROJECT_DIR$/cmd" />
+      <root_directory value="$PROJECT_DIR$" />
+      <kind value="PACKAGE" />
+      <package value="github.com/fgrosse/kafkactl/cmd" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$" />
+      <framework value="gotest" />
+      <pattern value="^\QTestConfiguration_Brokers\E$" />
       <method v="2" />
     </configuration>
     <configuration name="TestConfiguration_SetContext in github.com/fgrosse/kafkactl/cmd" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
@@ -103,18 +120,6 @@
       <filePath value="$PROJECT_DIR$" />
       <framework value="gotest" />
       <pattern value="^\QTestConfiguration_SetContext\E$/^\Qno-change\E$" />
-      <method v="2" />
-    </configuration>
-    <configuration name="TestSaveConfiguration in github.com/fgrosse/kafkactl/cmd" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
-      <module name="kafkactl" />
-      <working_directory value="$PROJECT_DIR$/cmd" />
-      <root_directory value="$PROJECT_DIR$" />
-      <kind value="PACKAGE" />
-      <package value="github.com/fgrosse/kafkactl/cmd" />
-      <directory value="$PROJECT_DIR$" />
-      <filePath value="$PROJECT_DIR$" />
-      <framework value="gotest" />
-      <pattern value="^\QTestSaveConfiguration\E$" />
       <method v="2" />
     </configuration>
     <configuration default="true" type="GoTestRunConfiguration" factoryName="Go Test">
@@ -204,11 +209,11 @@
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Go Test.TestConfiguration_Brokers in github.com/fgrosse/kafkactl/cmd" />
         <item itemvalue="Go Test.go test cmd" />
         <item itemvalue="Go Test.TestConfiguration_SetContext_DashButPreviousIsEmpty in github.com/fgrosse/kafkactl/cmd" />
         <item itemvalue="Go Test.TestConfiguration_SetContext in github.com/fgrosse/kafkactl/cmd" />
         <item itemvalue="Go Test.TestConfiguration_SetContext/no-change in github.com/fgrosse/kafkactl/cmd" />
-        <item itemvalue="Go Test.TestSaveConfiguration in github.com/fgrosse/kafkactl/cmd" />
       </list>
     </recent_temporary>
   </component>

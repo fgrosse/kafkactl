@@ -261,7 +261,7 @@ func TestConfiguration_SetContext_DashButPreviousIsEmpty2(t *testing.T) {
 		PreviousContext: "",
 		Contexts: []ContextConfiguration{
 			{Name: "staging", Brokers: []string{"staging.example.com"}},
-			{Name: "prod", Brokers: []string{"staging.example.com"}},
+			{Name: "prod", Brokers: []string{"prod.example.com"}},
 			{Name: "localhost", Brokers: []string{"localhost:9092"}},
 		},
 	}
@@ -274,4 +274,33 @@ func TestConfiguration_SetContext_DashButPreviousIsEmpty2(t *testing.T) {
 
 	assert.Equal(t, "staging", conf.CurrentContext)
 	assert.Equal(t, "", conf.PreviousContext)
+}
+
+func TestConfiguration_Brokers(t *testing.T) {
+	conf := Configuration{
+		APIVersion: "v1",
+		Contexts: []ContextConfiguration{
+			{Name: "staging", Brokers: []string{"staging.example.com:9092"}},
+			{Name: "prod", Brokers: []string{"prod1.example.com", "prod2.example.com"}},
+			{Name: "localhost", Brokers: []string{"localhost:9092"}},
+		},
+	}
+
+	conf.CurrentContext = "prod"
+	actual := conf.Brokers()
+	expected := []string{"prod1.example.com:9092", "prod2.example.com:9092"}
+	assert.Equal(t, expected, actual)
+
+	conf.CurrentContext = ""
+	actual = conf.Brokers()
+	assert.Empty(t, actual)
+
+	conf.CurrentContext = "unknown-context"
+	actual = conf.Brokers()
+	assert.Empty(t, actual)
+
+	conf.CurrentContext = "staging"
+	actual = conf.Brokers()
+	expected = []string{"staging.example.com:9092"}
+	assert.Equal(t, expected, actual)
 }
