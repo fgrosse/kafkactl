@@ -21,6 +21,7 @@ kafkactl get brokers --output=json`,
 	getCmd.AddCommand(cmd.GetBrokersCmd())
 	getCmd.AddCommand(cmd.GetTopicsCmd())
 	getCmd.AddCommand(cmd.GetConsumerGroupsCmd())
+	getCmd.AddCommand(cmd.GetConfigCmd())
 
 	return getCmd
 }
