@@ -40,7 +40,10 @@ add or remove new configuration contexts using the 'kafkactl config add-context'
   kafkactl context -
 `,
 		RunE: func(_ *cobra.Command, args []string) error {
-			contextName := args[0]
+			var contextName string
+			if len(args) > 0 {
+				contextName = args[0]
+			}
 			encoding := viper.GetString("output")
 			return cmd.runContextCmd(contextName, encoding)
 		},
