@@ -6,6 +6,9 @@ require (
 	github.com/Shopify/sarama v1.21.0
 	github.com/fatih/color v1.13.0
 	github.com/fgrosse/cli v0.0.0-20190104120053-ecd919dde986
+	github.com/golang/protobuf v1.5.2
+	github.com/jhump/protoreflect v1.14.1
+	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/viper v1.15.0
 	github.com/stretchr/testify v1.8.1
@@ -37,6 +40,8 @@ require (
 	github.com/subosito/gotenv v1.4.2 // indirect
 	golang.org/x/sys v0.4.0 // indirect
 	golang.org/x/text v0.6.0 // indirect
+	google.golang.org/genproto v0.0.0-20221227171554-f9683d7f8bef // indirect
+	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
-	gopkg.in/yaml.v2 v2.2.2 // indirect
+	gopkg.in/yaml.v2 v2.2.8 // indirect
 )

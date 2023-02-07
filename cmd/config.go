@@ -6,22 +6,44 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 )
 
 type Configuration struct {
-	APIVersion string                 `yaml:"api_version"`
-	Contexts   []ContextConfiguration `yaml:"contexts"`
-
+	APIVersion      string `yaml:"api_version"`
 	CurrentContext  string `yaml:"current_context"`
 	PreviousContext string `yaml:"previous_context"`
+
+	Contexts []ContextConfiguration   `yaml:"contexts"`
+	Topics   []*TopicConfig           `yaml:"topics"`
+	Proto    GlobalProtoDecoderConfig `yaml:"proto"`
 }
 
 type ContextConfiguration struct {
 	Name    string
 	Brokers []string
+}
+
+type TopicConfig struct {
+	Name   string
+	Decode TopicDecoderConfig
+}
+
+type TopicDecoderConfig struct {
+	Proto TopicProtoDecoderConfig
+}
+
+type TopicProtoDecoderConfig struct {
+	Type string
+	File string
+}
+
+type GlobalProtoDecoderConfig struct {
+	Includes []string
 }
 
 func NewConfiguration() Configuration {
@@ -252,6 +274,20 @@ func (conf *Configuration) Brokers() []string {
 		}
 	}
 	return brokers
+}
+
+func (conf *Configuration) TopicConfig(topic string) (*TopicConfig, error) {
+	for i, topicConf := range conf.Topics {
+		re, err := regexp.Compile("^" + topicConf.Name + "$")
+		if err != nil {
+			return nil, errors.Errorf(`topic configuration "name" field of topic %d is no valid regular expression: %v`, i, err)
+		}
+		if re.MatchString(topic) {
+			return topicConf, nil
+		}
+	}
+
+	return nil, nil
 }
 
 func ensurePort(addr string) string {

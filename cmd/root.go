@@ -81,6 +81,11 @@ func (cmd *Kafkactl) requireConfiguredContext() error {
 }
 
 func (cmd *Kafkactl) connectClient() (sarama.Client, error) {
+	conf := cmd.saramaConfig()
+	return cmd.connectClientWithConfig(conf)
+}
+
+func (cmd *Kafkactl) connectClientWithConfig(conf *sarama.Config) (sarama.Client, error) {
 	if err := cmd.requireConfiguredContext(); err != nil {
 		return nil, err
 	}
@@ -94,7 +99,7 @@ func (cmd *Kafkactl) connectClient() (sarama.Client, error) {
 	// TODO: close client connection when context is closed?
 
 	cmd.debug.Printf("Establishing initial connection to %q", brokers)
-	return sarama.NewClient(brokers, saramaConfig())
+	return sarama.NewClient(brokers, conf)
 }
 
 func (cmd *Kafkactl) connectAdmin() (sarama.ClusterAdmin, error) {
@@ -110,10 +115,10 @@ func (cmd *Kafkactl) connectAdmin() (sarama.ClusterAdmin, error) {
 
 	// TODO: close client connection when context is closed?
 
-	return sarama.NewClusterAdmin(brokers, saramaConfig())
+	return sarama.NewClusterAdmin(brokers, cmd.saramaConfig())
 }
 
-func saramaConfig() *sarama.Config {
+func (*Kafkactl) saramaConfig() *sarama.Config {
 	conf := sarama.NewConfig()
 	conf.Version = sarama.V1_1_0_0
 	conf.ClientID = "kafkactl"
