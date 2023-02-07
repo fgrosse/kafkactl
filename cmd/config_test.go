@@ -175,6 +175,129 @@ func TestConfiguration_AddContext_SetCurrentContextIfEmpty(t *testing.T) {
 	assert.Equal(t, "test", c.CurrentContext)
 }
 
+func TestConfiguration_DeleteContext(t *testing.T) {
+	conf := Configuration{
+		APIVersion: "v1",
+		Contexts: []ContextConfiguration{
+			{Name: "a", Brokers: []string{"a.example.com"}},
+			{Name: "b", Brokers: []string{"b.example.com"}},
+			{Name: "c", Brokers: []string{"c.example.com"}},
+			{Name: "d", Brokers: []string{"d.example.com"}},
+			{Name: "e", Brokers: []string{"e.example.com"}},
+		},
+	}
+
+	t.Log("Delete unknown element")
+	err := conf.DeleteContext("foo")
+	assert.EqualError(t, err, `there is no context called "foo"`)
+
+	t.Log("Delete first element")
+	require.NoError(t, conf.DeleteContext("a"))
+	expected := []ContextConfiguration{
+		{Name: "b", Brokers: []string{"b.example.com"}},
+		{Name: "c", Brokers: []string{"c.example.com"}},
+		{Name: "d", Brokers: []string{"d.example.com"}},
+		{Name: "e", Brokers: []string{"e.example.com"}},
+	}
+	assert.Equal(t, expected, conf.Contexts)
+
+	t.Log("Delete last element")
+	require.NoError(t, conf.DeleteContext("e"))
+	expected = []ContextConfiguration{
+		{Name: "b", Brokers: []string{"b.example.com"}},
+		{Name: "c", Brokers: []string{"c.example.com"}},
+		{Name: "d", Brokers: []string{"d.example.com"}},
+	}
+	assert.Equal(t, expected, conf.Contexts)
+
+	t.Log("Delete middle element")
+	require.NoError(t, conf.DeleteContext("c"))
+	expected = []ContextConfiguration{
+		{Name: "b", Brokers: []string{"b.example.com"}},
+		{Name: "d", Brokers: []string{"d.example.com"}},
+	}
+	assert.Equal(t, expected, conf.Contexts)
+
+	t.Log("Delete last remaining elements")
+	require.NoError(t, conf.DeleteContext("b"))
+	require.NoError(t, conf.DeleteContext("d"))
+	expected = []ContextConfiguration{}
+	assert.Equal(t, expected, conf.Contexts)
+}
+
+func TestConfiguration_DeleteContext_UpdateCurrentContext(t *testing.T) {
+	conf := Configuration{
+		APIVersion:      "v1",
+		CurrentContext:  "localhost",
+		PreviousContext: "staging",
+		Contexts: []ContextConfiguration{
+			{Name: "prod", Brokers: []string{"example.com"}},
+			{Name: "staging", Brokers: []string{"staging.example.com"}},
+			{Name: "localhost", Brokers: []string{"localhost:9092"}},
+		},
+	}
+
+	require.NoError(t, conf.DeleteContext("localhost"))
+	assert.Equal(t, "staging", conf.CurrentContext) // previous context
+	assert.Equal(t, "", conf.PreviousContext)
+
+	require.NoError(t, conf.DeleteContext("staging"))
+	assert.Equal(t, "prod", conf.CurrentContext) // only context left
+	assert.Equal(t, "", conf.PreviousContext)
+
+	require.NoError(t, conf.DeleteContext("prod"))
+	assert.Equal(t, "", conf.CurrentContext)
+	assert.Equal(t, "", conf.PreviousContext)
+}
+
+func TestConfiguration_DeleteContext_UpdatePreviousContext(t *testing.T) {
+	conf := Configuration{
+		APIVersion:      "v1",
+		CurrentContext:  "localhost",
+		PreviousContext: "staging",
+		Contexts: []ContextConfiguration{
+			{Name: "prod", Brokers: []string{"example.com"}},
+			{Name: "staging", Brokers: []string{"staging.example.com"}},
+			{Name: "localhost", Brokers: []string{"localhost:9092"}},
+		},
+	}
+
+	require.NoError(t, conf.DeleteContext("staging"))
+	assert.Equal(t, "", conf.PreviousContext)
+}
+
+func TestConfiguration_RenameContext(t *testing.T) {
+	conf := Configuration{
+		APIVersion: "v1",
+		Contexts: []ContextConfiguration{
+			{Name: "a", Brokers: []string{"a.example.com"}},
+			{Name: "b", Brokers: []string{"b.example.com"}},
+			{Name: "c", Brokers: []string{"c.example.com"}},
+		},
+	}
+
+	err := conf.RenameContext("a", "X")
+	require.NoError(t, err)
+	expected := []ContextConfiguration{
+		{Name: "X", Brokers: []string{"a.example.com"}},
+		{Name: "b", Brokers: []string{"b.example.com"}},
+		{Name: "c", Brokers: []string{"c.example.com"}},
+	}
+	assert.Equal(t, expected, conf.Contexts)
+
+	err = conf.RenameContext("foo", "bar")
+	assert.EqualError(t, err, `there is no context called "foo"`)
+	assert.Equal(t, expected, conf.Contexts)
+
+	err = conf.RenameContext("b", "c")
+	assert.EqualError(t, err, `there is already a context named "c"`)
+	assert.Equal(t, expected, conf.Contexts)
+
+	err = conf.RenameContext("b", "b")
+	assert.EqualError(t, err, `there is already a context named "b"`)
+	assert.Equal(t, expected, conf.Contexts)
+}
+
 func TestConfiguration_SetContext(t *testing.T) {
 	conf := Configuration{
 		APIVersion:      "v1",

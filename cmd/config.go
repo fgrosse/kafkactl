@@ -178,6 +178,68 @@ func (conf *Configuration) toggleContext() error {
 	return nil
 }
 
+func (conf *Configuration) DeleteContext(name string) error {
+	var deleted bool
+	for i, c := range conf.Contexts {
+		if c.Name == name {
+			switch i {
+			case 0:
+				conf.Contexts = conf.Contexts[i+1:]
+			case len(conf.Contexts) - 1:
+				conf.Contexts = conf.Contexts[:i]
+			default:
+				conf.Contexts = append(conf.Contexts[:i], conf.Contexts[i+1:]...)
+			}
+			deleted = true
+			break
+		}
+	}
+
+	if !deleted {
+		return fmt.Errorf("there is no context called %q", name)
+	}
+
+	if name == conf.CurrentContext {
+		conf.CurrentContext = conf.PreviousContext
+		conf.PreviousContext = ""
+	} else if name == conf.PreviousContext {
+		conf.PreviousContext = ""
+	}
+
+	if len(conf.Contexts) == 1 {
+		conf.CurrentContext = conf.Contexts[0].Name
+	}
+
+	// TODO: return an error if the current context is deleted and there is no previous context
+	return nil
+}
+
+func (conf *Configuration) RenameContext(oldName, newName string) error {
+	var ct *ContextConfiguration
+	for i, c := range conf.Contexts {
+		if c.Name == oldName {
+			ct = &(conf.Contexts[i])
+		}
+		if c.Name == newName {
+			return fmt.Errorf("there is already a context named %q", newName)
+		}
+	}
+
+	if ct == nil {
+		return fmt.Errorf("there is no context called %q", oldName)
+	}
+
+	ct.Name = newName // only rename when we know there is no conflict
+	if conf.CurrentContext == oldName {
+		conf.CurrentContext = newName
+	}
+	if conf.PreviousContext == oldName {
+		conf.PreviousContext = newName
+	}
+
+	return nil
+}
+
 func (conf *Configuration) Brokers() []string {
 	var brokers []string
 	for _, c := range conf.Contexts {
