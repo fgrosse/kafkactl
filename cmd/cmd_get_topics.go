@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"log"
 	"math"
 	"regexp"
 	"sort"
@@ -48,9 +47,8 @@ func (cmd *Kafkactl) GetTopicsCmd() *cobra.Command {
 	}
 
 	flags := getTopicsCmd.Flags()
-	flags.BoolP("all", "a", false, "show also Kafka internal topics")
+	flags.BoolP("all", "a", false, `show also Kafka internal topics (e.g. "__consumer_offsets")`)
 	flags.StringP("regex", "e", "", "only show topics which match this regular expression")
-	flags.BoolP("fetch-metadata", "m", true, "fetch metadata such as partitions and their offsets")
 
 	return getTopicsCmd
 }
@@ -58,7 +56,6 @@ func (cmd *Kafkactl) GetTopicsCmd() *cobra.Command {
 func (cmd *Kafkactl) runGetTopicsCmd(_ *cobra.Command, args []string) error {
 	showAll := viper.GetBool("all")
 	regex := viper.GetString("regex")
-	fetchMetadata := viper.GetBool("fetch-metadata")
 	outputEncoding := viper.GetString("output")
 
 	var rexp *regexp.Regexp
@@ -84,7 +81,7 @@ func (cmd *Kafkactl) runGetTopicsCmd(_ *cobra.Command, args []string) error {
 
 	defer admin.Close()
 
-	topics, err := FetchTopics(client, admin, args, fetchMetadata, showAll, rexp)
+	topics, err := cmd.fetchTopics(client, admin, args, showAll, rexp)
 	if err != nil {
 		return err
 	}
@@ -96,50 +93,30 @@ func (cmd *Kafkactl) runGetTopicsCmd(_ *cobra.Command, args []string) error {
 // empty set for all topics or one or more names to get information on specific
 // topics. Pass regexEnabled=true to parse the first topicsArgs element as a
 // regex. If showAll=true internal kafka topics will be displayed.
-func FetchTopics(client sarama.Client, admin sarama.ClusterAdmin, topicsArgs []string, fetchMetadata, showAll bool, regex *regexp.Regexp) ([]Topic, error) {
-	var (
-		metaDataResp *sarama.MetadataResponse
-		err          error
-	)
-
-	for _, b := range client.Brokers() {
-		err = b.Open(client.Config())
-		if err != nil {
-			continue // TODO
-		}
-
-		req := &sarama.MetadataRequest{Topics: topicsArgs}
-		metaDataResp, err = b.GetMetadata(req)
-		if err != nil {
-			continue // TODO
-		}
-	}
-
+func (cmd *Kafkactl) fetchTopics(client sarama.Client, admin sarama.ClusterAdmin, topicsArgs []string, showAll bool, regex *regexp.Regexp) ([]Topic, error) {
+	topicMeta, err := cmd.fetchTopicMetaData(client, topicsArgs)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get cluster meta data: %w", err)
+		return nil, err
 	}
 
-	topicsResponse, err := admin.ListTopics()
+	topicDetails, err := admin.ListTopics()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list topics: %w", err)
 	}
 
-	topicMeta := map[string]*sarama.TopicMetadata{}
-	for _, meta := range metaDataResp.Topics {
-		topicMeta[meta.Name] = meta
-	}
-
 	var topics []Topic
-	for topicName, details := range topicsResponse {
+	for topicName, details := range topicDetails {
 		if !showAll && isIgnoredTopic(topicName) {
 			continue
 		}
 
-		if _, ok := topicMeta[topicName]; !ok {
+		if regex != nil && !regex.MatchString(topicName) {
 			continue
 		}
 
-		if regex != nil && !regex.MatchString(topicName) {
+		meta := topicMeta[topicName]
+		if meta == nil {
+			cmd.logger.Printf("WARNING: Did not find meta data for topic %q", topicName)
 			continue
 		}
 
@@ -150,51 +127,79 @@ func FetchTopics(client sarama.Client, admin sarama.ClusterAdmin, topicsArgs []s
 			Configuration:     details.ConfigEntries,
 		}
 
-		if !fetchMetadata {
-			topics = append(topics, top)
-			continue
-		}
-
-		retention := getTopicRetention(details)
-		top.Retention = shortDuration(retention)
-
-		meta := topicMeta[topicName]
-		if meta == nil {
-			log.Printf("WARNING: Did not find meta data for topic %q", topicName)
-			continue
-		}
-
-		top.Partitions = make([]PartitionMetadata, len(meta.Partitions))
-		for i, p := range meta.Partitions {
-			offset, err := client.GetOffset(top.Name, p.ID, sarama.OffsetNewest)
-			if err != nil {
-				log.Printf("WARNING: Failed to fetch offset for topic %q partition %d: %v", topicName, p.ID, err)
-			}
-
-			sort.Slice(p.Replicas, func(i, j int) bool { return p.Replicas[i] < p.Replicas[j] })
-			sort.Slice(p.Isr, func(i, j int) bool { return p.Isr[i] < p.Isr[j] })
-			sort.Slice(p.OfflineReplicas, func(i, j int) bool { return p.OfflineReplicas[i] < p.OfflineReplicas[j] })
-
-			top.Partitions[i] = PartitionMetadata{
-				PartitionID:     p.ID,
-				Offset:          offset,
-				Leader:          p.Leader,
-				Replicas:        p.Replicas,
-				InSyncReplicas:  p.Isr,
-				OfflineReplicas: p.OfflineReplicas,
-			}
-		}
+		top.Retention = cmd.getTopicRetention(details)
+		top.Partitions = cmd.fetchTopicPartitions(client, topicName, details, meta)
 
 		topics = append(topics, top)
+	}
+
+	err = cmd.assignTopicConsumers(admin, topics)
+	if err != nil {
+		return nil, err
 	}
 
 	sort.Slice(topics, func(i, j int) bool {
 		return topics[i].Name < topics[j].Name
 	})
 
-	topicConsumers, err := fetchTopicConsumers(admin, topics)
+	return topics, nil
+}
+
+func (*Kafkactl) fetchTopicMetaData(client sarama.Client, topics []string) (map[string]*sarama.TopicMetadata, error) {
+	b, err := client.Controller()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get cluster controller broker: %w", err)
+	}
+
+	req := &sarama.MetadataRequest{Topics: topics}
+	metaDataResp, err := b.GetMetadata(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get cluster meta data: %w", err)
+	}
+
+	topicMeta := map[string]*sarama.TopicMetadata{}
+	for _, meta := range metaDataResp.Topics {
+		topicMeta[meta.Name] = meta
+	}
+
+	return topicMeta, nil
+}
+
+// special meta topic such as "__consumer_offsets"
+func isIgnoredTopic(name string) bool {
+	return strings.HasPrefix(name, "__")
+}
+
+func (cmd *Kafkactl) fetchTopicPartitions(client sarama.Client, topicName string, details sarama.TopicDetail, meta *sarama.TopicMetadata) []PartitionMetadata {
+	result := make([]PartitionMetadata, details.NumPartitions)
+	for i, p := range meta.Partitions {
+		offset, err := client.GetOffset(topicName, p.ID, sarama.OffsetNewest)
+		if err != nil {
+			cmd.logger.Printf("WARNING: Failed to fetch offset for topic %q partition %d: %v", topicName, p.ID, err)
+			continue
+		}
+
+		sort.Slice(p.Replicas, func(i, j int) bool { return p.Replicas[i] < p.Replicas[j] })
+		sort.Slice(p.Isr, func(i, j int) bool { return p.Isr[i] < p.Isr[j] })
+		sort.Slice(p.OfflineReplicas, func(i, j int) bool { return p.OfflineReplicas[i] < p.OfflineReplicas[j] })
+
+		result[i] = PartitionMetadata{
+			PartitionID:     p.ID,
+			Offset:          offset,
+			Leader:          p.Leader,
+			Replicas:        p.Replicas,
+			InSyncReplicas:  p.Isr,
+			OfflineReplicas: p.OfflineReplicas,
+		}
+	}
+
+	return result
+}
+
+func (cmd *Kafkactl) assignTopicConsumers(admin sarama.ClusterAdmin, topics []Topic) error {
+	topicConsumers, err := cmd.fetchTopicConsumers(admin, topics)
+	if err != nil {
+		return err
 	}
 
 	for i, topic := range topics {
@@ -207,15 +212,10 @@ func FetchTopics(client sarama.Client, admin sarama.ClusterAdmin, topicsArgs []s
 		topics[i] = topic
 	}
 
-	return topics, nil
+	return nil
 }
 
-// special meta topic such as "__consumer_offsets"
-func isIgnoredTopic(name string) bool {
-	return strings.HasPrefix(name, "__")
-}
-
-func fetchTopicConsumers(admin sarama.ClusterAdmin, topics []Topic) (map[string][]string, error) {
+func (*Kafkactl) fetchTopicConsumers(admin sarama.ClusterAdmin, topics []Topic) (map[string][]string, error) {
 	consumerGroups, err := admin.ListConsumerGroups()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list consumer groups: %w", err)
@@ -243,15 +243,6 @@ func fetchTopicConsumers(admin sarama.ClusterAdmin, topics []Topic) (map[string]
 			for _, partition := range partitions {
 				block := offsets.GetBlock(topic, partition)
 				if block.Offset != -1 {
-					consumerLag := topicOffsets[topic][partition] - block.Offset
-					if consumerLag < 0 {
-						// We are fetching the topic offsets before we fetch the
-						// individual consumer offsets. Due to this racyness,
-						// the *actual* topic offset can be higher at this point
-						// which leads to negative lag values.
-						consumerLag = 0
-					}
-
 					topicConsumers[topic] = append(topicConsumers[topic], group)
 					break
 				}
@@ -260,6 +251,20 @@ func fetchTopicConsumers(admin sarama.ClusterAdmin, topics []Topic) (map[string]
 	}
 
 	return topicConsumers, nil
+}
+
+func (*Kafkactl) getTopicRetention(details sarama.TopicDetail) string {
+	r := details.ConfigEntries["retention.ms"]
+	if r == nil {
+		return ""
+	}
+
+	d, err := time.ParseDuration(*r + "ms")
+	if err != nil {
+		return ""
+	}
+
+	return shortDuration(d)
 }
 
 func shortDuration(d time.Duration) string {
@@ -288,18 +293,4 @@ func shortDuration(d time.Duration) string {
 
 	// display minutes and hours
 	return fmt.Sprintf("%dh%dm", int(hours), int(minutes))
-}
-
-func getTopicRetention(details sarama.TopicDetail) time.Duration {
-	r := details.ConfigEntries["retention.ms"]
-	if r == nil {
-		return 0
-	}
-
-	d, err := time.ParseDuration(*r + "ms")
-	if err != nil {
-		return 0
-	}
-
-	return d
 }
