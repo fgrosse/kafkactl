@@ -20,13 +20,14 @@ func (cmd *Kafkactl) GetBrokersCmd() *cobra.Command {
 		Use:   "brokers",
 		Args:  cobra.ExactArgs(0),
 		Short: "List all Kafka brokers",
-		RunE:  cmd.runGetBrokersCmd,
+		RunE: func(*cobra.Command, []string) error {
+			encoding := viper.GetString("output")
+			return cmd.getBrokers(encoding)
+		},
 	}
 }
 
-func (cmd *Kafkactl) runGetBrokersCmd(cc *cobra.Command, args []string) error {
-	outputEncoding := viper.GetString("output")
-
+func (cmd *Kafkactl) getBrokers(encoding string) error {
 	client, err := cmd.connectClient()
 	if err != nil {
 		return err
@@ -47,5 +48,5 @@ func (cmd *Kafkactl) runGetBrokersCmd(cc *cobra.Command, args []string) error {
 		return brokers[i].ID < brokers[j].ID
 	})
 
-	return cli.Print(outputEncoding, brokers)
+	return cli.Print(encoding, brokers)
 }

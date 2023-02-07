@@ -43,7 +43,12 @@ func (cmd *Kafkactl) GetTopicsCmd() *cobra.Command {
 		Long: "List all topics or fetch information for only a subset of topics " +
 			"by passing the respective topic name as arguments",
 		Args: cobra.ArbitraryArgs,
-		RunE: cmd.runGetTopicsCmd,
+		RunE: func(_ *cobra.Command, args []string) error {
+			showAll := viper.GetBool("all")
+			regex := viper.GetString("regex")
+			encoding := viper.GetString("output")
+			return cmd.getTopics(showAll, regex, encoding, args)
+		},
 	}
 
 	flags := getTopicsCmd.Flags()
@@ -53,11 +58,7 @@ func (cmd *Kafkactl) GetTopicsCmd() *cobra.Command {
 	return getTopicsCmd
 }
 
-func (cmd *Kafkactl) runGetTopicsCmd(_ *cobra.Command, args []string) error {
-	showAll := viper.GetBool("all")
-	regex := viper.GetString("regex")
-	outputEncoding := viper.GetString("output")
-
+func (cmd *Kafkactl) getTopics(showAll bool, regex, encoding string, args []string) error {
 	var rexp *regexp.Regexp
 	if regex != "" {
 		var err error
@@ -86,7 +87,7 @@ func (cmd *Kafkactl) runGetTopicsCmd(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	return cli.Print(outputEncoding, topics)
+	return cli.Print(encoding, topics)
 }
 
 // FetchTopics will return a list of topics and their metadata, either provide an

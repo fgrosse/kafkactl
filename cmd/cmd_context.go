@@ -13,7 +13,7 @@ import (
 
 func (cmd *Kafkactl) ContextCmd() *cobra.Command {
 	contextCmd := &cobra.Command{
-		Use:   "context",
+		Use:   "context [CONTEXT_NAME]",
 		Args:  cobra.MaximumNArgs(1),
 		Short: "Switch between different configuration contexts (e.g. prod, staging, local)",
 		Long: `Switch between different configurations contexts (e.g. prod, staging, local).
@@ -39,7 +39,11 @@ add or remove new configuration contexts using the 'kafkactl config add-context'
   # Toggle between your current config and your previous config
   kafkactl context -
 `,
-		RunE: cmd.runContextCmd,
+		RunE: func(_ *cobra.Command, args []string) error {
+			contextName := args[0]
+			encoding := viper.GetString("output")
+			return cmd.runContextCmd(contextName, encoding)
+		},
 	}
 
 	contextCmd.Flags().StringP("output", "o", "short", "Output format. One of json|yaml|table|raw|short")
@@ -47,13 +51,10 @@ add or remove new configuration contexts using the 'kafkactl config add-context'
 	return contextCmd
 }
 
-func (cmd *Kafkactl) runContextCmd(cc *cobra.Command, args []string) error {
+func (cmd *Kafkactl) runContextCmd(contextName, encoding string) error {
 	if err := cmd.requireConfiguredContext(); err != nil {
 		return err
 	}
-
-	output := viper.GetString("output")
-	setContext := len(args) == 1
 
 	type Context struct {
 		Name          string   `table:"NAME"`
@@ -70,8 +71,8 @@ func (cmd *Kafkactl) runContextCmd(cc *cobra.Command, args []string) error {
 		})
 	}
 
-	if setContext {
-		err := cmd.conf.SetContext(args[0])
+	if contextName != "" {
+		err := cmd.conf.SetContext(contextName)
 		if err != nil {
 			return err
 		}
@@ -86,7 +87,7 @@ func (cmd *Kafkactl) runContextCmd(cc *cobra.Command, args []string) error {
 		return contexts[i].Name < contexts[j].Name
 	})
 
-	if output == "short" {
+	if encoding == "short" {
 		colored := color.New(color.FgYellow, color.Bold)
 		// emulate a format similar to kubectx
 		for _, c := range contexts {
@@ -99,5 +100,5 @@ func (cmd *Kafkactl) runContextCmd(cc *cobra.Command, args []string) error {
 		return nil
 	}
 
-	return cli.Print(output, contexts)
+	return cli.Print(encoding, contexts)
 }
