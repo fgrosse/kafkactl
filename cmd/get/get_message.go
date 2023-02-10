@@ -1,4 +1,4 @@
-package cmd
+package get
 
 import (
 	"context"
@@ -9,21 +9,22 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/fgrosse/cli"
+	"github.com/fgrosse/kafkactl/pkg"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
-func (cmd *Kafkactl) GetMessageCmd() *cobra.Command {
+func (cmd *Command) GetMessageCmd() *cobra.Command {
 	getMessageCmd := &cobra.Command{
 		Use:   "message --topic=foo --offset=123",
 		Args:  cobra.NoArgs,
 		Short: "Consume messages from a Kafka cluster",
 		Example: `
 # Print message with offset 81041238 from topic my-fancy-topic  
-kafkactl get message --topic=my-fancy-topic --offset=81041238
+Command get message --topic=my-fancy-topic --offset=81041238
 
 # Read offsets from std in and print all corresponding messages
-kubectl logs -l app=my-app | jq 'select(…) | .offset' | kafkactl get message --offset=- --topic=my-fancy-topic
+kubectl logs -l app=my-app | jq 'select(…) | .offset' | Command get message --offset=- --topic=my-fancy-topic
 `,
 		RunE: func(_ *cobra.Command, args []string) error {
 			ctx := cli.Context()
@@ -49,7 +50,7 @@ kubectl logs -l app=my-app | jq 'select(…) | .offset' | kafkactl get message -
 	return getMessageCmd
 }
 
-func (cmd *Kafkactl) getMessage(ctx context.Context, offset, topic string, partition int32, encoding string) error {
+func (cmd *Command) getMessage(ctx context.Context, offset, topic string, partition int32, encoding string) error {
 	if encoding != "json" && encoding != "raw" {
 		return errors.New("only JSON and raw output are supported by this sub command")
 	}
@@ -58,7 +59,8 @@ func (cmd *Kafkactl) getMessage(ctx context.Context, offset, topic string, parti
 		return errors.New("empty topic flag")
 	}
 
-	dec, err := cmd.topicDecoder(topic)
+	conf := cmd.Configuration()
+	dec, err := pkg.NewTopicDecoder(topic, conf)
 	if err != nil {
 		return err
 	}
@@ -100,12 +102,12 @@ func (cmd *Kafkactl) getMessage(ctx context.Context, offset, topic string, parti
 	return printMessage(offset)
 }
 
-func (cmd *Kafkactl) fetchMessageForOffset(topic string, partition int32, offset int64) (*sarama.ConsumerMessage, error) {
-	conf := cmd.saramaConfig()
+func (cmd *Command) fetchMessageForOffset(topic string, partition int32, offset int64) (*sarama.ConsumerMessage, error) {
+	conf := cmd.SaramaConfig()
 	conf.Metadata.Full = false // we are only interested in very specific topics
 	conf.Producer.Return.Successes = true
 
-	client, err := cmd.connectClientWithConfig(conf)
+	client, err := cmd.ConnectClient(conf)
 	if err != nil {
 		return nil, err
 	}

@@ -1,4 +1,4 @@
-package cmd
+package get
 
 import (
 	"encoding/json"
@@ -44,7 +44,7 @@ type GroupOffset struct {
 	PendingMessages     int64
 }
 
-func (cmd *Kafkactl) GetConsumerGroupsCmd() *cobra.Command {
+func (cmd *Command) GetConsumerGroupsCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:     "consumers [GROUP_NAME]",
 		Args:    cobra.MaximumNArgs(1),
@@ -61,7 +61,7 @@ func (cmd *Kafkactl) GetConsumerGroupsCmd() *cobra.Command {
 	}
 }
 
-func (cmd *Kafkactl) getConsumerGroups(name, encoding string) error {
+func (cmd *Command) getConsumerGroups(name, encoding string) error {
 	if name == "" {
 		return cmd.listGroups(encoding)
 	}
@@ -69,8 +69,8 @@ func (cmd *Kafkactl) getConsumerGroups(name, encoding string) error {
 	return cmd.getConsumerGroup(name, encoding)
 }
 
-func (cmd *Kafkactl) listGroups(encoding string) error {
-	admin, err := cmd.connectAdmin()
+func (cmd *Command) listGroups(encoding string) error {
+	admin, err := cmd.ConnectAdmin()
 	if err != nil {
 		return err
 	}
@@ -92,8 +92,9 @@ func (cmd *Kafkactl) listGroups(encoding string) error {
 	return cli.Print(encoding, groups)
 }
 
-func (cmd *Kafkactl) getConsumerGroup(groupID, encoding string) error {
-	client, err := cmd.connectClient()
+func (cmd *Command) getConsumerGroup(groupID, encoding string) error {
+	conf := cmd.SaramaConfig()
+	client, err := cmd.ConnectClient(conf)
 	if err != nil {
 		return err
 	}

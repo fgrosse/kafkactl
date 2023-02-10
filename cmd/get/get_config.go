@@ -1,4 +1,4 @@
-package cmd
+package get
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func (cmd *Kafkactl) GetConfigCmd() *cobra.Command {
+func (cmd *Command) GetConfigCmd() *cobra.Command {
 	getConfigCmd := &cobra.Command{
 		Use:   "config",
 		Short: "Get Kafka broker or topic configuration",
@@ -49,13 +49,13 @@ kafkactl get config auto.create.topics.enable
 	return getConfigCmd
 }
 
-func (cmd *Kafkactl) getConfig(encoding, topic string, args []string) error {
+func (cmd *Command) getConfig(encoding, topic string, args []string) error {
 	filter := map[string]bool{}
 	for _, arg := range args {
 		filter[arg] = true
 	}
 
-	admin, err := cmd.connectAdmin()
+	admin, err := cmd.ConnectAdmin()
 	if err != nil {
 		return err
 	}

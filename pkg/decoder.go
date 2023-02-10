@@ -1,4 +1,4 @@
-package cmd
+package pkg
 
 import (
 	"encoding/json"
@@ -21,8 +21,8 @@ type Decoder interface {
 
 type RawDecoder struct{}
 
-func (cmd *Kafkactl) topicDecoder(topic string) (Decoder, error) {
-	topicConf, err := cmd.conf.TopicConfig(topic)
+func NewTopicDecoder(topic string, conf Configuration) (Decoder, error) {
+	topicConf, err := conf.TopicConfig(topic)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load topic configuration")
 	}
@@ -31,12 +31,12 @@ func (cmd *Kafkactl) topicDecoder(topic string) (Decoder, error) {
 	case topicConf == nil:
 		return new(RawDecoder), nil
 	case topicConf.Decode.Proto.Type != "":
-		for i, s := range cmd.conf.Proto.Includes {
-			cmd.conf.Proto.Includes[i] = os.ExpandEnv(s)
+		for i, s := range conf.Proto.Includes {
+			conf.Proto.Includes[i] = os.ExpandEnv(s)
 		}
 
 		return NewProtoDecoder(ProtoDecoderConfig{
-			Includes: cmd.conf.Proto.Includes,
+			Includes: conf.Proto.Includes,
 			File:     topicConf.Decode.Proto.File,
 			Type:     topicConf.Decode.Proto.Type,
 		})

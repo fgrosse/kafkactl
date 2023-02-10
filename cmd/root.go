@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
+	"github.com/fgrosse/kafkactl/cmd/get"
+	"github.com/fgrosse/kafkactl/pkg"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -19,7 +21,7 @@ type Kafkactl struct {
 	*cobra.Command
 	logger *log.Logger
 	debug  *log.Logger
-	conf   Configuration
+	conf   pkg.Configuration
 }
 
 func New() *Kafkactl {
@@ -43,7 +45,7 @@ func New() *Kafkactl {
 
 	cmd.AddCommand(cmd.ConfigCmd())
 	cmd.AddCommand(cmd.ContextCmd())
-	cmd.AddCommand(cmd.GetCmd())
+	cmd.AddCommand(get.NewCommand(cmd, cmd.logger, cmd.debug))
 
 	cmd.PersistentPreRunE = cmd.initConfig
 
@@ -72,6 +74,53 @@ func (cmd *Kafkactl) initConfig(cc *cobra.Command, args []string) error {
 	return nil
 }
 
+func (cmd *Kafkactl) loadConfiguration() error {
+	path := cmd.configFilePath()
+	f, err := os.Open(path)
+	switch {
+	case os.IsNotExist(err):
+		cmd.debug.Printf("Did not find configuration file at %q", path)
+		return nil
+	case err != nil:
+		return err
+	default:
+		cmd.debug.Printf("Loading configuration from %q", path)
+	}
+
+	defer f.Close()
+	cmd.conf, err = pkg.LoadConfiguration(f)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (cmd *Kafkactl) configFilePath() string {
+	return viper.GetString("config")
+}
+
+func (cmd *Kafkactl) saveConfiguration() error {
+	path := cmd.configFilePath()
+	dir := filepath.Dir(path)
+	err := os.MkdirAll(dir, 0755)
+	if err != nil {
+		return fmt.Errorf("create configuration directory: %w", err)
+	}
+
+	f, err := os.Create(path)
+	if err != nil {
+		return fmt.Errorf("create configuration file: %w", err)
+	}
+
+	err = pkg.SaveConfiguration(f, cmd.conf)
+	if err != nil {
+		return err
+	}
+
+	return f.Close()
+}
+
 func (cmd *Kafkactl) requireConfiguredContext() error {
 	if len(cmd.conf.Contexts) == 0 {
 		return fmt.Errorf("this command requires at least one configured context. Please use kafkactl config --help to get started")
@@ -80,12 +129,7 @@ func (cmd *Kafkactl) requireConfiguredContext() error {
 	return nil
 }
 
-func (cmd *Kafkactl) connectClient() (sarama.Client, error) {
-	conf := cmd.saramaConfig()
-	return cmd.connectClientWithConfig(conf)
-}
-
-func (cmd *Kafkactl) connectClientWithConfig(conf *sarama.Config) (sarama.Client, error) {
+func (cmd *Kafkactl) ConnectClient(conf *sarama.Config) (sarama.Client, error) {
 	if err := cmd.requireConfiguredContext(); err != nil {
 		return nil, err
 	}
@@ -102,7 +146,7 @@ func (cmd *Kafkactl) connectClientWithConfig(conf *sarama.Config) (sarama.Client
 	return sarama.NewClient(brokers, conf)
 }
 
-func (cmd *Kafkactl) connectAdmin() (sarama.ClusterAdmin, error) {
+func (cmd *Kafkactl) ConnectAdmin() (sarama.ClusterAdmin, error) {
 	if err := cmd.requireConfiguredContext(); err != nil {
 		return nil, err
 	}
@@ -115,10 +159,14 @@ func (cmd *Kafkactl) connectAdmin() (sarama.ClusterAdmin, error) {
 
 	// TODO: close client connection when context is closed?
 
-	return sarama.NewClusterAdmin(brokers, cmd.saramaConfig())
+	return sarama.NewClusterAdmin(brokers, cmd.SaramaConfig())
 }
 
-func (*Kafkactl) saramaConfig() *sarama.Config {
+func (cmd *Kafkactl) Configuration() pkg.Configuration {
+	return cmd.conf
+}
+
+func (*Kafkactl) SaramaConfig() *sarama.Config {
 	conf := sarama.NewConfig()
 	conf.Version = sarama.V1_1_0_0
 	conf.ClientID = "kafkactl"

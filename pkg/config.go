@@ -1,15 +1,12 @@
-package cmd
+package pkg
 
 import (
 	"fmt"
 	"io"
 	"net/url"
-	"os"
-	"path/filepath"
 	"regexp"
 
 	"github.com/pkg/errors"
-	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 )
 
@@ -60,32 +57,6 @@ func DefaultConfiguration() Configuration {
 	return conf
 }
 
-func (cmd *Kafkactl) loadConfiguration() error {
-	path := cmd.configFilePath()
-	f, err := os.Open(path)
-	switch {
-	case os.IsNotExist(err):
-		cmd.debug.Printf("Did not find configuration file at %q", path)
-		return nil
-	case err != nil:
-		return err
-	default:
-		cmd.debug.Printf("Loading configuration from %q", path)
-	}
-
-	defer f.Close()
-	cmd.conf, err = LoadConfiguration(f)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (cmd *Kafkactl) configFilePath() string {
-	return viper.GetString("config")
-}
-
 func LoadConfiguration(r io.Reader) (Configuration, error) {
 	conf := Configuration{}
 	dec := yaml.NewDecoder(r)
@@ -96,27 +67,6 @@ func LoadConfiguration(r io.Reader) (Configuration, error) {
 	}
 
 	return conf, nil
-}
-
-func (cmd *Kafkactl) saveConfiguration() error {
-	path := cmd.configFilePath()
-	dir := filepath.Dir(path)
-	err := os.MkdirAll(dir, 0755)
-	if err != nil {
-		return fmt.Errorf("create configuration directory: %w", err)
-	}
-
-	f, err := os.Create(path)
-	if err != nil {
-		return fmt.Errorf("create configuration file: %w", err)
-	}
-
-	err = SaveConfiguration(f, cmd.conf)
-	if err != nil {
-		return err
-	}
-
-	return f.Close()
 }
 
 func SaveConfiguration(w io.Writer, conf Configuration) error {

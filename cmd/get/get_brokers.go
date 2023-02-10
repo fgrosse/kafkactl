@@ -1,4 +1,4 @@
-package cmd
+package get
 
 import (
 	"sort"
@@ -15,7 +15,7 @@ type Broker struct {
 	Rack string `json:",omitempty"`
 }
 
-func (cmd *Kafkactl) GetBrokersCmd() *cobra.Command {
+func (cmd *Command) GetBrokersCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "brokers",
 		Args:  cobra.ExactArgs(0),
@@ -27,8 +27,9 @@ func (cmd *Kafkactl) GetBrokersCmd() *cobra.Command {
 	}
 }
 
-func (cmd *Kafkactl) getBrokers(encoding string) error {
-	client, err := cmd.connectClient()
+func (cmd *Command) getBrokers(encoding string) error {
+	conf := cmd.SaramaConfig()
+	client, err := cmd.ConnectClient(conf)
 	if err != nil {
 		return err
 	}
