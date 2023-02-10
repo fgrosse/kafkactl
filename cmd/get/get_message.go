@@ -60,7 +60,7 @@ func (cmd *Command) getMessage(ctx context.Context, offset, topic string, partit
 	}
 
 	conf := cmd.Configuration()
-	dec, err := pkg.NewTopicDecoder(topic, conf)
+	dec, err := pkg.NewTopicDecoder(topic, *conf)
 	if err != nil {
 		return err
 	}

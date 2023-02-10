@@ -68,7 +68,7 @@ bar: baz
 }
 
 func TestSaveConfiguration(t *testing.T) {
-	conf := Configuration{
+	conf := &Configuration{
 		APIVersion:      "v1",
 		CurrentContext:  "staging",
 		PreviousContext: "prod",

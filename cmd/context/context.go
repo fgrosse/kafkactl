@@ -1,4 +1,4 @@
-package cmd
+package context
 
 import (
 	"fmt"
@@ -11,20 +11,25 @@ import (
 	"github.com/spf13/viper"
 )
 
-func (cmd *Kafkactl) ContextCmd() *cobra.Command {
+type Context struct {
+	Name          string   `table:"NAME"`
+	BrokersString string   `table:"BROKERS" json:"-" yaml:"-"`
+	Brokers       []string `table:"-"`
+}
+
+func (cmd *Command) ContextCmd() *cobra.Command {
 	contextCmd := &cobra.Command{
 		Use:   "context [CONTEXT_NAME]",
 		Args:  cobra.MaximumNArgs(1),
 		Short: "Switch between different configuration contexts (e.g. prod, staging, local)",
 		Long: `Switch between different configurations contexts (e.g. prod, staging, local).
 
-The kafkactl context feature is conceptionally similar to how kubectl is typically
-configured. You can setup one or more Kafka clusters configurations so you can
-conveniently switch between those contexts without having to remember or lookup
-the broker addresses all the time.
+The kafkactl context feature is conceptionally similar to how kubectl manages cluster configuration.
+You can setup one or more Kafka clusters configurations so you can conveniently switch between those
+contexts without having to remember or lookup the broker addresses all the time.
 
 The 'kafkactl context' command is what the kubectx script is for kubectl. You can 
-add or remove new configuration contexts using the 'kafkactl config add-context' command.
+add or remove new configuration contexts using the 'kafkactl config' sub commands.
 `,
 		Example: `
   # Print the all available configs and highlight the one that is currently used
@@ -54,19 +59,14 @@ add or remove new configuration contexts using the 'kafkactl config add-context'
 	return contextCmd
 }
 
-func (cmd *Kafkactl) runContextCmd(contextName, encoding string) error {
-	if err := cmd.requireConfiguredContext(); err != nil {
-		return err
-	}
-
-	type Context struct {
-		Name          string   `table:"NAME"`
-		BrokersString string   `table:"BROKERS" json:"-" yaml:"-"`
-		Brokers       []string `table:"-"`
+func (cmd *Command) runContextCmd(contextName, encoding string) error {
+	conf := cmd.Configuration()
+	if len(conf.Contexts) == 0 {
+		return fmt.Errorf("this command requires at least one configured context. Please use kafkactl config --help to get started")
 	}
 
 	var contexts []Context
-	for _, c := range cmd.conf.Contexts {
+	for _, c := range conf.Contexts {
 		contexts = append(contexts, Context{
 			Name:          c.Name,
 			Brokers:       c.Brokers,
@@ -75,12 +75,12 @@ func (cmd *Kafkactl) runContextCmd(contextName, encoding string) error {
 	}
 
 	if contextName != "" {
-		err := cmd.conf.SetContext(contextName)
+		err := conf.SetContext(contextName)
 		if err != nil {
 			return err
 		}
 
-		err = cmd.saveConfiguration()
+		err = cmd.SaveConfiguration()
 		if err != nil {
 			return err
 		}
@@ -94,7 +94,7 @@ func (cmd *Kafkactl) runContextCmd(contextName, encoding string) error {
 		colored := color.New(color.FgYellow, color.Bold)
 		// emulate a format similar to kubectx
 		for _, c := range contexts {
-			if c.Name == cmd.conf.CurrentContext {
+			if c.Name == conf.CurrentContext {
 				_, _ = colored.Println("* " + c.Name)
 			} else {
 				_, _ = fmt.Println("  " + c.Name)

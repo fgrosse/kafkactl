@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
+	"github.com/fgrosse/kafkactl/cmd/config"
+	"github.com/fgrosse/kafkactl/cmd/context"
 	"github.com/fgrosse/kafkactl/cmd/get"
 	"github.com/fgrosse/kafkactl/pkg"
 	"github.com/spf13/cobra"
@@ -21,7 +23,7 @@ type Kafkactl struct {
 	*cobra.Command
 	logger *log.Logger
 	debug  *log.Logger
-	conf   pkg.Configuration
+	conf   *pkg.Configuration
 }
 
 func New() *Kafkactl {
@@ -30,6 +32,7 @@ func New() *Kafkactl {
 	cmd := &Kafkactl{
 		logger: log.New(os.Stderr, "", 0),
 		debug:  log.New(io.Discard, "", 0),
+		conf:   pkg.DefaultConfiguration(),
 		Command: &cobra.Command{
 			Use:   "kafkactl",
 			Short: "kafkactl is a command line tool to interact with an Apache Kafka cluster",
@@ -43,8 +46,8 @@ func New() *Kafkactl {
 	flags.BoolP("verbose", "v", false, "enable verbose output")
 	viper.BindPFlags(flags)
 
-	cmd.AddCommand(cmd.ConfigCmd())
-	cmd.AddCommand(cmd.ContextCmd())
+	cmd.AddCommand(config.NewCommand(cmd, cmd.logger))
+	cmd.AddCommand(context.NewCommand(cmd))
 	cmd.AddCommand(get.NewCommand(cmd, cmd.logger, cmd.debug))
 
 	cmd.PersistentPreRunE = cmd.initConfig
@@ -100,7 +103,7 @@ func (cmd *Kafkactl) configFilePath() string {
 	return viper.GetString("config")
 }
 
-func (cmd *Kafkactl) saveConfiguration() error {
+func (cmd *Kafkactl) SaveConfiguration() error {
 	path := cmd.configFilePath()
 	dir := filepath.Dir(path)
 	err := os.MkdirAll(dir, 0755)
@@ -162,7 +165,7 @@ func (cmd *Kafkactl) ConnectAdmin() (sarama.ClusterAdmin, error) {
 	return sarama.NewClusterAdmin(brokers, cmd.SaramaConfig())
 }
 
-func (cmd *Kafkactl) Configuration() pkg.Configuration {
+func (cmd *Kafkactl) Configuration() *pkg.Configuration {
 	return cmd.conf
 }
 

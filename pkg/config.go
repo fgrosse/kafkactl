@@ -43,11 +43,11 @@ type GlobalProtoDecoderConfig struct {
 	Includes []string
 }
 
-func NewConfiguration() Configuration {
-	return Configuration{APIVersion: "v1"}
+func NewConfiguration() *Configuration {
+	return &Configuration{APIVersion: "v1"}
 }
 
-func DefaultConfiguration() Configuration {
+func DefaultConfiguration() *Configuration {
 	conf := NewConfiguration()
 	err := conf.AddContext("default", "localhost:9092")
 	if err != nil {
@@ -57,19 +57,19 @@ func DefaultConfiguration() Configuration {
 	return conf
 }
 
-func LoadConfiguration(r io.Reader) (Configuration, error) {
-	conf := Configuration{}
+func LoadConfiguration(r io.Reader) (*Configuration, error) {
+	conf := new(Configuration)
 	dec := yaml.NewDecoder(r)
 	dec.KnownFields(true)
-	err := dec.Decode(&conf)
+	err := dec.Decode(conf)
 	if err != nil {
-		return conf, err
+		return nil, err
 	}
 
 	return conf, nil
 }
 
-func SaveConfiguration(w io.Writer, conf Configuration) error {
+func SaveConfiguration(w io.Writer, conf *Configuration) error {
 	enc := yaml.NewEncoder(w)
 	enc.SetIndent(2)
 	err := enc.Encode(conf)

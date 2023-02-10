@@ -16,7 +16,7 @@ type Command struct {
 }
 
 type BaseCommand interface {
-	Configuration() pkg.Configuration
+	Configuration() *pkg.Configuration
 	SaramaConfig() *sarama.Config
 	ConnectClient(*sarama.Config) (sarama.Client, error)
 	ConnectAdmin() (sarama.ClusterAdmin, error)
