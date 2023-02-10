@@ -8,14 +8,14 @@ import (
 	"github.com/spf13/viper"
 )
 
-// Broker contains information displayed by "get brokers".
+// Broker contains information displayed by "kafkactl get brokers".
 type Broker struct {
 	ID   int32
 	Addr string
 	Rack string `json:",omitempty"`
 }
 
-func (cmd *Command) GetBrokersCmd() *cobra.Command {
+func (cmd *command) GetBrokersCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "brokers",
 		Args:  cobra.ExactArgs(0),
@@ -27,7 +27,7 @@ func (cmd *Command) GetBrokersCmd() *cobra.Command {
 	}
 }
 
-func (cmd *Command) getBrokers(encoding string) error {
+func (cmd *command) getBrokers(encoding string) error {
 	conf := cmd.SaramaConfig()
 	client, err := cmd.ConnectClient(conf)
 	if err != nil {

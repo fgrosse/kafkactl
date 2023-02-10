@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type Command struct {
+type command struct {
 	BaseCommand
 	*cobra.Command
 	logger *log.Logger
@@ -18,8 +18,8 @@ type BaseCommand interface {
 	SaveConfiguration() error
 }
 
-func NewCommand(base BaseCommand, logger *log.Logger) *cobra.Command {
-	cmd := &Command{
+func Command(base BaseCommand, logger *log.Logger) *cobra.Command {
+	cmd := &command{
 		BaseCommand: base,
 		logger:      logger,
 		Command: &cobra.Command{

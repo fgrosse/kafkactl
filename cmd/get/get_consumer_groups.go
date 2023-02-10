@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-// ConsumerGroup contains information displayed by "get consumer".
+// ConsumerGroup contains information displayed by "kafkactl get consumer".
 type ConsumerGroup struct {
 	GroupID         string
 	Protocol        string        `table:"-"`
@@ -26,7 +26,7 @@ type ConsumerGroup struct {
 	OffsetsSummary  string        `json:"-" yaml:"-" table:"OFFSETS"`
 }
 
-// GroupMember contains information displayed by "get group".
+// GroupMember contains information displayed by "kafkactl get consumer".
 type GroupMember struct {
 	ID         string
 	ClientID   string
@@ -35,7 +35,7 @@ type GroupMember struct {
 	UserData   json.RawMessage
 }
 
-// GroupOffset contains information displayed by "get group".
+// GroupOffset contains information displayed by "kafkactl get consumer".
 type GroupOffset struct {
 	Topic               string
 	Partition           int32
@@ -44,7 +44,7 @@ type GroupOffset struct {
 	PendingMessages     int64
 }
 
-func (cmd *Command) GetConsumerGroupsCmd() *cobra.Command {
+func (cmd *command) GetConsumerGroupsCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:     "consumers [GROUP_NAME]",
 		Args:    cobra.MaximumNArgs(1),
@@ -61,7 +61,7 @@ func (cmd *Command) GetConsumerGroupsCmd() *cobra.Command {
 	}
 }
 
-func (cmd *Command) getConsumerGroups(name, encoding string) error {
+func (cmd *command) getConsumerGroups(name, encoding string) error {
 	if name == "" {
 		return cmd.listGroups(encoding)
 	}
@@ -69,7 +69,7 @@ func (cmd *Command) getConsumerGroups(name, encoding string) error {
 	return cmd.getConsumerGroup(name, encoding)
 }
 
-func (cmd *Command) listGroups(encoding string) error {
+func (cmd *command) listGroups(encoding string) error {
 	admin, err := cmd.ConnectAdmin()
 	if err != nil {
 		return err
@@ -92,7 +92,7 @@ func (cmd *Command) listGroups(encoding string) error {
 	return cli.Print(encoding, groups)
 }
 
-func (cmd *Command) getConsumerGroup(groupID, encoding string) error {
+func (cmd *command) getConsumerGroup(groupID, encoding string) error {
 	conf := cmd.SaramaConfig()
 	client, err := cmd.ConnectClient(conf)
 	if err != nil {

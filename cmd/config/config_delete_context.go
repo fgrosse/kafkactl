@@ -4,7 +4,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func (cmd *Command) ConfigDeleteContextCmd() *cobra.Command {
+func (cmd *command) ConfigDeleteContextCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "delete <CONTEXT_NAME>",
 		Args:  cobra.ExactArgs(1),
@@ -16,7 +16,7 @@ func (cmd *Command) ConfigDeleteContextCmd() *cobra.Command {
 	}
 }
 
-func (cmd *Command) deleteContext(name string) error {
+func (cmd *command) deleteContext(name string) error {
 	conf := cmd.Configuration()
 	err := conf.DeleteContext(name)
 	if err != nil {

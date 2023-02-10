@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func (cmd *Command) ConfigPrintCmd() *cobra.Command {
+func (cmd *command) ConfigPrintCmd() *cobra.Command {
 	printCmd := &cobra.Command{
 		Use:   "print",
 		Args:  cobra.NoArgs,

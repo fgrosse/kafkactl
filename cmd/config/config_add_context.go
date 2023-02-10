@@ -5,7 +5,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func (cmd *Command) ConfigAddContextCmd() *cobra.Command {
+func (cmd *command) ConfigAddContextCmd() *cobra.Command {
 	addContextCmd := &cobra.Command{
 		Use:   "add <CONTEXT_NAME>",
 		Args:  cobra.ExactArgs(1),
@@ -23,7 +23,7 @@ func (cmd *Command) ConfigAddContextCmd() *cobra.Command {
 	return addContextCmd
 }
 
-func (cmd *Command) addContext(name string, brokers []string) error {
+func (cmd *command) addContext(name string, brokers []string) error {
 	conf := cmd.Configuration()
 	err := conf.AddContext(name, brokers...)
 	if err != nil {

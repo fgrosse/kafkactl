@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type Command struct {
+type command struct {
 	BaseCommand
 	*cobra.Command
 	logger *log.Logger
@@ -22,14 +22,14 @@ type BaseCommand interface {
 	ConnectAdmin() (sarama.ClusterAdmin, error)
 }
 
-func NewCommand(base BaseCommand, logger, debug *log.Logger) *cobra.Command {
-	cmd := &Command{
+func Command(base BaseCommand, logger, debug *log.Logger) *cobra.Command {
+	cmd := &command{
 		BaseCommand: base,
 		logger:      logger,
 		debug:       debug,
 		Command: &cobra.Command{
 			Use:   "get",
-			Short: "Display one or many resources in the Kafka cluster",
+			Short: "Display resources in the Kafka cluster",
 			Example: `
 # List all topics in a Kafka cluster
 kafkactl get topics

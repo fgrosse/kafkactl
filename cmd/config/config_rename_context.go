@@ -4,7 +4,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func (cmd *Command) ConfigRenameContextCmd() *cobra.Command {
+func (cmd *command) ConfigRenameContextCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "rename <OLD_CONTEXT_NAME> <NEW_CONTEXT_NAME>",
 		Args:  cobra.ExactArgs(2),
@@ -17,7 +17,7 @@ func (cmd *Command) ConfigRenameContextCmd() *cobra.Command {
 	}
 }
 
-func (cmd *Command) renameContext(oldName, newName string) error {
+func (cmd *command) renameContext(oldName, newName string) error {
 	conf := cmd.Configuration()
 	err := conf.RenameContext(oldName, newName)
 	if err != nil {

@@ -48,9 +48,9 @@ func New() *Kafkactl {
 	flags.BoolP("verbose", "v", false, "enable verbose output")
 	viper.BindPFlags(flags)
 
-	cmd.AddCommand(config.NewCommand(cmd, logger))
-	cmd.AddCommand(context.NewCommand(cmd))
-	cmd.AddCommand(get.NewCommand(cmd, logger, debug))
+	cmd.AddCommand(config.Command(cmd, logger))
+	cmd.AddCommand(context.Command(cmd))
+	cmd.AddCommand(get.Command(cmd, logger, debug))
 
 	cmd.PersistentPreRunE = cmd.initConfig
 

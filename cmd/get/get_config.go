@@ -9,7 +9,17 @@ import (
 	"github.com/spf13/viper"
 )
 
-func (cmd *Command) GetConfigCmd() *cobra.Command {
+// Config contains information displayed by "kafkactl get config".
+type Config struct {
+	Name      string `table:"NAME"`
+	Value     string `table:"VALUE"`
+	Default   bool   `table:"DEFAULT"`
+	ReadOnly  bool   `table:"READ_ONLY"`
+	Sensitive bool   `table:"-"`
+	Source    string `table:"-"`
+}
+
+func (cmd *command) GetConfigCmd() *cobra.Command {
 	getConfigCmd := &cobra.Command{
 		Use:   "config",
 		Short: "Get Kafka broker or topic configuration",
@@ -49,7 +59,7 @@ kafkactl get config auto.create.topics.enable
 	return getConfigCmd
 }
 
-func (cmd *Command) getConfig(encoding, topic string, args []string) error {
+func (cmd *command) getConfig(encoding, topic string, args []string) error {
 	filter := map[string]bool{}
 	for _, arg := range args {
 		filter[arg] = true
@@ -89,15 +99,6 @@ func (cmd *Command) getConfig(encoding, topic string, args []string) error {
 	resp, err := admin.DescribeConfig(req)
 	if err != nil {
 		return err
-	}
-
-	type Config struct {
-		Name      string `table:"NAME"`
-		Value     string `table:"VALUE"`
-		Default   bool   `table:"DEFAULT"`
-		Sensitive bool   `table:"-"`
-		ReadOnly  bool   `table:"READ_ONLY"`
-		Source    string `table:"-"`
 	}
 
 	output := make([]Config, 0, len(resp))

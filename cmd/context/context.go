@@ -17,11 +17,11 @@ type Context struct {
 	Brokers       []string `table:"-"`
 }
 
-func (cmd *Command) ContextCmd() *cobra.Command {
+func (cmd *command) ContextCmd() *cobra.Command {
 	contextCmd := &cobra.Command{
 		Use:   "context [CONTEXT_NAME]",
 		Args:  cobra.MaximumNArgs(1),
-		Short: "Switch between different configuration contexts (e.g. prod, staging, local)",
+		Short: "Switch between different configuration contexts",
 		Long: `Switch between different configurations contexts (e.g. prod, staging, local).
 
 The kafkactl context feature is conceptionally similar to how kubectl manages cluster configuration.
@@ -59,7 +59,7 @@ add or remove new configuration contexts using the 'kafkactl config' sub command
 	return contextCmd
 }
 
-func (cmd *Command) runContextCmd(contextName, encoding string) error {
+func (cmd *command) runContextCmd(contextName, encoding string) error {
 	conf := cmd.Configuration()
 	if len(conf.Contexts) == 0 {
 		return fmt.Errorf("this command requires at least one configured context. Please use kafkactl config --help to get started")

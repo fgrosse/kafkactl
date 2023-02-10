@@ -35,7 +35,7 @@ type PartitionMetadata struct {
 	OfflineReplicas []int32
 }
 
-func (cmd *Command) GetTopicsCmd() *cobra.Command {
+func (cmd *command) GetTopicsCmd() *cobra.Command {
 	getTopicsCmd := &cobra.Command{
 		Use:     "topics [TOPIC_NAME]",
 		Aliases: []string{"topic"},
@@ -58,7 +58,7 @@ func (cmd *Command) GetTopicsCmd() *cobra.Command {
 	return getTopicsCmd
 }
 
-func (cmd *Command) getTopics(showAll bool, regex, encoding string, args []string) error {
+func (cmd *command) getTopics(showAll bool, regex, encoding string, args []string) error {
 	var rexp *regexp.Regexp
 	if regex != "" {
 		var err error
@@ -95,7 +95,7 @@ func (cmd *Command) getTopics(showAll bool, regex, encoding string, args []strin
 // empty set for all topics or one or more names to get information on specific
 // topics. Pass regexEnabled=true to parse the first topicsArgs element as a
 // regex. If showAll=true internal kafka topics will be displayed.
-func (cmd *Command) fetchTopics(client sarama.Client, admin sarama.ClusterAdmin, topicsArgs []string, showAll bool, regex *regexp.Regexp) ([]Topic, error) {
+func (cmd *command) fetchTopics(client sarama.Client, admin sarama.ClusterAdmin, topicsArgs []string, showAll bool, regex *regexp.Regexp) ([]Topic, error) {
 	topicMeta, err := cmd.fetchTopicMetaData(client, topicsArgs)
 	if err != nil {
 		return nil, err
@@ -147,7 +147,7 @@ func (cmd *Command) fetchTopics(client sarama.Client, admin sarama.ClusterAdmin,
 	return topics, nil
 }
 
-func (*Command) fetchTopicMetaData(client sarama.Client, topics []string) (map[string]*sarama.TopicMetadata, error) {
+func (*command) fetchTopicMetaData(client sarama.Client, topics []string) (map[string]*sarama.TopicMetadata, error) {
 	b, err := client.Controller()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get cluster controller broker: %w", err)
@@ -172,7 +172,7 @@ func isIgnoredTopic(name string) bool {
 	return strings.HasPrefix(name, "__")
 }
 
-func (cmd *Command) fetchTopicPartitions(client sarama.Client, topicName string, details sarama.TopicDetail, meta *sarama.TopicMetadata) []PartitionMetadata {
+func (cmd *command) fetchTopicPartitions(client sarama.Client, topicName string, details sarama.TopicDetail, meta *sarama.TopicMetadata) []PartitionMetadata {
 	result := make([]PartitionMetadata, details.NumPartitions)
 	for i, p := range meta.Partitions {
 		offset, err := client.GetOffset(topicName, p.ID, sarama.OffsetNewest)
@@ -198,7 +198,7 @@ func (cmd *Command) fetchTopicPartitions(client sarama.Client, topicName string,
 	return result
 }
 
-func (cmd *Command) assignTopicConsumers(admin sarama.ClusterAdmin, topics []Topic) error {
+func (cmd *command) assignTopicConsumers(admin sarama.ClusterAdmin, topics []Topic) error {
 	topicConsumers, err := cmd.fetchTopicConsumers(admin, topics)
 	if err != nil {
 		return err
@@ -217,7 +217,7 @@ func (cmd *Command) assignTopicConsumers(admin sarama.ClusterAdmin, topics []Top
 	return nil
 }
 
-func (*Command) fetchTopicConsumers(admin sarama.ClusterAdmin, topics []Topic) (map[string][]string, error) {
+func (*command) fetchTopicConsumers(admin sarama.ClusterAdmin, topics []Topic) (map[string][]string, error) {
 	consumerGroups, err := admin.ListConsumerGroups()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list consumer groups: %w", err)
@@ -255,7 +255,7 @@ func (*Command) fetchTopicConsumers(admin sarama.ClusterAdmin, topics []Topic) (
 	return topicConsumers, nil
 }
 
-func (*Command) getTopicRetention(details sarama.TopicDetail) string {
+func (*command) getTopicRetention(details sarama.TopicDetail) string {
 	r := details.ConfigEntries["retention.ms"]
 	if r == nil {
 		return ""

@@ -5,7 +5,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type Command struct {
+type command struct {
 	BaseCommand
 	*cobra.Command
 }
@@ -15,7 +15,7 @@ type BaseCommand interface {
 	SaveConfiguration() error
 }
 
-func NewCommand(base BaseCommand) *cobra.Command {
-	cmd := &Command{BaseCommand: base}
+func Command(base BaseCommand) *cobra.Command {
+	cmd := &command{BaseCommand: base}
 	return cmd.ContextCmd()
 }
