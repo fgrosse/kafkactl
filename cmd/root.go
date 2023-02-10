@@ -13,6 +13,7 @@ import (
 	"github.com/Shopify/sarama"
 	"github.com/fgrosse/kafkactl/cmd/config"
 	"github.com/fgrosse/kafkactl/cmd/context"
+	"github.com/fgrosse/kafkactl/cmd/create"
 	"github.com/fgrosse/kafkactl/cmd/get"
 	"github.com/fgrosse/kafkactl/pkg"
 	"github.com/spf13/cobra"
@@ -48,9 +49,10 @@ func New() *Kafkactl {
 	flags.BoolP("verbose", "v", false, "enable verbose output")
 	viper.BindPFlags(flags)
 
-	cmd.AddCommand(config.Command(cmd, logger))
+	cmd.AddCommand(config.Command(cmd, logger, debug))
 	cmd.AddCommand(context.Command(cmd))
 	cmd.AddCommand(get.Command(cmd, logger, debug))
+	cmd.AddCommand(create.Command(cmd, logger, debug))
 
 	cmd.PersistentPreRunE = cmd.initConfig
 
@@ -145,8 +147,6 @@ func (cmd *Kafkactl) ConnectClient(conf *sarama.Config) (sarama.Client, error) {
 		return nil, errors.New("need at least one broker")
 	}
 
-	// TODO: close client connection when context is closed?
-
 	cmd.debug.Printf("Establishing initial connection to %q", brokers)
 	return sarama.NewClient(brokers, conf)
 }
@@ -161,8 +161,6 @@ func (cmd *Kafkactl) ConnectAdmin() (sarama.ClusterAdmin, error) {
 	if len(brokers) == 0 {
 		return nil, errors.New("need at least one broker")
 	}
-
-	// TODO: close client connection when context is closed?
 
 	return sarama.NewClusterAdmin(brokers, cmd.SaramaConfig())
 }
