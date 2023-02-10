@@ -1,6 +1,7 @@
-package cmd
+package pkg
 
 import (
+	"log"
 	"time"
 
 	"github.com/Shopify/sarama"
@@ -15,8 +16,8 @@ const (
 // FetchMessage returns a single message from Kafka. Note that if you want to
 // retrieve more than a single message it might be more performant to use
 // FetchMessages(…) instead.
-func (cmd *Kafkactl) FetchMessage(broker *sarama.Broker, topic string, partition int32, offset int64) (*sarama.ConsumerMessage, error) {
-	messages, err := cmd.FetchMessages(broker, topic, partition, offset, defaultFetchSizeBytes)
+func FetchMessage(broker *sarama.Broker, topic string, partition int32, offset int64, debugLogger *log.Logger) (*sarama.ConsumerMessage, error) {
+	messages, err := FetchMessages(broker, topic, partition, offset, defaultFetchSizeBytes, debugLogger)
 	if err != nil {
 		return nil, err
 	}
@@ -36,12 +37,12 @@ func (cmd *Kafkactl) FetchMessage(broker *sarama.Broker, topic string, partition
 // message but also subsequent messages (i.e. ordered by offset) to fill up
 // the response until the fetch size is reached. You can control how many bytes
 // we are requesting using the fetchSizeBytes parameter.
-func (cmd *Kafkactl) FetchMessages(broker *sarama.Broker, topic string, partition int32, offset int64, fetchSizeBytes int32) ([]*sarama.ConsumerMessage, error) {
+func FetchMessages(broker *sarama.Broker, topic string, partition int32, offset int64, fetchSizeBytes int32, debugLogger *log.Logger) ([]*sarama.ConsumerMessage, error) {
 	if fetchSizeBytes > maxFetchSizeBytes {
 		return nil, errors.Errorf("message size is too big (%d bytes)", fetchSizeBytes)
 	}
 
-	cmd.debug.Printf("Fetching offset=%v fetch-size=%d", offset, fetchSizeBytes)
+	debugLogger.Printf("Fetching offset=%v fetch-size=%d", offset, fetchSizeBytes)
 
 	req := fetchOffsetRequest(topic, partition, offset, fetchSizeBytes)
 	resp, err := broker.Fetch(req)
@@ -78,8 +79,8 @@ func (cmd *Kafkactl) FetchMessages(broker *sarama.Broker, topic string, partitio
 
 	if len(messages) == 0 && isPartial {
 		fetchSizeBytes *= 2
-		cmd.debug.Printf("Received partial response and trying again with bigger fetch size offset=%v new-fetch-size=%d", offset, fetchSizeBytes)
-		return cmd.FetchMessages(broker, topic, partition, offset, fetchSizeBytes)
+		debugLogger.Printf("Received partial response and trying again with bigger fetch size offset=%v new-fetch-size=%d", offset, fetchSizeBytes)
+		return FetchMessages(broker, topic, partition, offset, fetchSizeBytes, debugLogger)
 	}
 
 	return messages, nil

@@ -20,7 +20,6 @@ type BaseCommand interface {
 	SaramaConfig() *sarama.Config
 	ConnectClient(*sarama.Config) (sarama.Client, error)
 	ConnectAdmin() (sarama.ClusterAdmin, error)
-	FetchMessage(broker *sarama.Broker, topic string, partition int32, offset int64) (*sarama.ConsumerMessage, error)
 }
 
 func NewCommand(base BaseCommand, logger, debug *log.Logger) *cobra.Command {

@@ -119,5 +119,5 @@ func (cmd *Command) fetchMessageForOffset(topic string, partition int32, offset 
 		return nil, fmt.Errorf("failed to determine leader for partition %d of topic %q: %w", partition, topic, err)
 	}
 
-	return cmd.FetchMessage(broker, topic, partition, offset)
+	return pkg.FetchMessage(broker, topic, partition, offset, cmd.debug)
 }

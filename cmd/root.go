@@ -28,11 +28,13 @@ type Kafkactl struct {
 
 func New() *Kafkactl {
 	defaultConfigPath := filepath.Join(os.ExpandEnv("$HOME"), ".config", "kafkactl2", "config.yml") // TODO: s/kafkactl2/kafkactl
+	logger := log.New(os.Stderr, "", 0)
+	debug := log.New(io.Discard, "", 0)
 
 	cmd := &Kafkactl{
-		logger: log.New(os.Stderr, "", 0),
-		debug:  log.New(io.Discard, "", 0),
 		conf:   pkg.DefaultConfiguration(),
+		logger: logger,
+		debug:  debug,
 		Command: &cobra.Command{
 			Use:   "kafkactl",
 			Short: "kafkactl is a command line tool to interact with an Apache Kafka cluster",
@@ -46,9 +48,9 @@ func New() *Kafkactl {
 	flags.BoolP("verbose", "v", false, "enable verbose output")
 	viper.BindPFlags(flags)
 
-	cmd.AddCommand(config.NewCommand(cmd, cmd.logger))
+	cmd.AddCommand(config.NewCommand(cmd, logger))
 	cmd.AddCommand(context.NewCommand(cmd))
-	cmd.AddCommand(get.NewCommand(cmd, cmd.logger, cmd.debug))
+	cmd.AddCommand(get.NewCommand(cmd, logger, debug))
 
 	cmd.PersistentPreRunE = cmd.initConfig
 
