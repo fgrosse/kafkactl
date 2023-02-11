@@ -20,12 +20,11 @@ func (cmd *command) GetMessageCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 		Short: "Consume messages from a Kafka cluster",
 		Example: `
-# Print message with offset 81041238 from topic my-fancy-topic  
-kafkactl get message --topic=my-fancy-topic --offset=81041238
-
-# Read offsets from std in and print all corresponding messages
-kubectl logs -l app=my-app | jq 'select(…) | .offset' | kafkactl get message --offset=- --topic=my-fancy-topic
-`,
+  # Print message with offset 81041238 from topic my-fancy-topic  
+  kafkactl get message --topic=my-fancy-topic --offset=81041238
+  
+  # Read offsets from std in and print all corresponding messages
+  kubectl logs -l app=my-app | jq 'select(…) | .offset' | kafkactl get message --offset=- --topic=my-fancy-topic`,
 		RunE: func(_ *cobra.Command, args []string) error {
 			ctx := cli.Context()
 			offset := viper.GetString("offset")

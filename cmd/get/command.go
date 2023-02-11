@@ -31,11 +31,11 @@ func Command(base BaseCommand, logger, debug *log.Logger) *cobra.Command {
 			Use:   "get",
 			Short: "Display resources in the Kafka cluster",
 			Example: `
-# List all topics in a Kafka cluster
-kafkactl get topics
-
-# Get all brokers as JSON
-kafkactl get brokers --output=json`,
+  # List all topics in a Kafka cluster
+  kafkactl get topics
+  
+  # Get all brokers as JSON
+  kafkactl get brokers --output=json`,
 		},
 	}
 

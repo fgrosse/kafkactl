@@ -7,7 +7,7 @@ import (
 
 func (cmd *command) ConfigAddContextCmd() *cobra.Command {
 	addContextCmd := &cobra.Command{
-		Use:   "add <CONTEXT_NAME>",
+		Use:   "add <name>",
 		Args:  cobra.ExactArgs(1),
 		Short: "Add a new Kafka cluster configuration context to your kafkactl config file",
 		RunE: func(_ *cobra.Command, args []string) error {

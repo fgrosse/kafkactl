@@ -46,7 +46,7 @@ type GroupOffset struct {
 
 func (cmd *command) GetConsumerGroupsCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "consumers [GROUP_NAME]",
+		Use:     "consumers [name]",
 		Args:    cobra.MaximumNArgs(1),
 		Aliases: []string{"consumer", "consumer-groups", "consumer-group"},
 		Short:   "List all consumer groups or display information only for a specific consumer group",

@@ -36,15 +36,14 @@ By default the command will print all configuration values but you can pass
 arguments to limit the output to specific configuration only.
 `,
 		Example: `
-# Get the broker configuration of the cluster
-kafkactl get config
-
-# Get all configuration for topic "foobar"
-kafkactl get config --topic=foobar
-
-# Check if topic auto creation is enabled in the cluster
-kafkactl get config auto.create.topics.enable 
-`,
+  # Get the broker configuration of the cluster
+  kafkactl get config
+  
+  # Get all configuration for topic "foobar"
+  kafkactl get config --topic=foobar
+  
+  # Check if topic auto creation is enabled in the cluster
+  kafkactl get config auto.create.topics.enable`,
 		RunE: func(_ *cobra.Command, args []string) error {
 			topic := viper.GetString("topic")
 			encoding := viper.GetString("output")

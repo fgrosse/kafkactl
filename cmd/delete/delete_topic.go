@@ -13,7 +13,7 @@ import (
 
 func (cmd *command) DeleteTopicCmd() *cobra.Command {
 	deleteTopicCmd := &cobra.Command{
-		Use:     "topic [TOPIC_NAME]",
+		Use:     "topic <name>",
 		Aliases: []string{"topics"},
 		Args:    cobra.ArbitraryArgs,
 		Short:   "Delete one or many topics",
@@ -26,18 +26,17 @@ You can pass multiple topic names to create multiple topics at the same time.
 All of them will have the same partition and replication settings from the flags.
 `,
 		Example: `
-# Delete a single topic called "foo"
-kafkactl delete topic foo
-
-# Delete three topics "foo", "bar" and "baz"
-kafkactl delete topics foo bar baz
-
-# Delete all topics that contain the term "foo"
-kafkactl delete topics --regex=foo
-
-# Delete all topics that match a regular expression
-kafkactl delete topics --regex '^fo+bar$'
-`,
+  # Delete a single topic called "foo"
+  kafkactl delete topic foo
+  
+  # Delete three topics "foo", "bar" and "baz"
+  kafkactl delete topics foo bar baz
+  
+  # Delete all topics that contain the term "foo"
+  kafkactl delete topics --regex=foo
+  
+  # Delete all topics that match a regular expression
+  kafkactl delete topics --regex '^fo+bar$'`,
 		RunE: func(_ *cobra.Command, args []string) error {
 			topics := args
 			regex := viper.GetString("regex")

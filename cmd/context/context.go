@@ -19,7 +19,7 @@ type Context struct {
 
 func (cmd *command) ContextCmd() *cobra.Command {
 	contextCmd := &cobra.Command{
-		Use:   "context [CONTEXT_NAME]",
+		Use:   "context <name>",
 		Args:  cobra.MaximumNArgs(1),
 		Short: "Switch between different configuration contexts",
 		Long: `Switch between different configurations contexts (e.g. prod, staging, local).
@@ -42,8 +42,7 @@ add or remove new configuration contexts using the 'kafkactl config' sub command
   kafkactl context some-cluster
   
   # Toggle between your current config and your previous config
-  kafkactl context -
-`,
+  kafkactl context -`,
 		RunE: func(_ *cobra.Command, args []string) error {
 			var contextName string
 			if len(args) > 0 {

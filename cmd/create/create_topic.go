@@ -15,7 +15,7 @@ var validTopicName = regexp.MustCompile(`[a-zA-Z0-9._-]+`)
 
 func (cmd *command) CreateTopicCmd() *cobra.Command {
 	createTopicCmd := &cobra.Command{
-		Use:     "topic [TOPIC_NAME]",
+		Use:     "topic <name>",
 		Aliases: []string{"topics"},
 		Args:    cobra.MinimumNArgs(1),
 		Short:   "Create one or many topics",

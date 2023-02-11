@@ -1,4 +1,4 @@
-package delete
+package update
 
 import (
 	"log"
@@ -15,6 +15,8 @@ type command struct {
 }
 
 type BaseCommand interface {
+	SaramaConfig() *sarama.Config
+	ConnectClient(*sarama.Config) (sarama.Client, error)
 	ConnectAdmin() (sarama.ClusterAdmin, error)
 }
 
@@ -24,15 +26,12 @@ func Command(base BaseCommand, logger, debug *log.Logger) *cobra.Command {
 		logger:      logger,
 		debug:       debug,
 		Command: &cobra.Command{
-			Use:   "delete",
-			Short: "Delete resources in the Kafka cluster",
-			Example: `
-  # Delete topic
-  kafkactl delete topic [TOPIC_NAME]`,
+			Use:   "update",
+			Short: "Update resources in the Kafka cluster",
 		},
 	}
 
-	cmd.AddCommand(cmd.DeleteTopicCmd())
+	cmd.AddCommand(cmd.UpdateTopicCmd())
 
 	return cmd.Command
 }

@@ -6,7 +6,7 @@ import (
 
 func (cmd *command) ConfigDeleteContextCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "delete <CONTEXT_NAME>",
+		Use:   "delete <name>",
 		Args:  cobra.ExactArgs(1),
 		Short: "Delete a configuration context from your kafkactl config file",
 		RunE: func(_ *cobra.Command, args []string) error {

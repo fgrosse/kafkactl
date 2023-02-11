@@ -16,6 +16,7 @@ import (
 	"github.com/fgrosse/kafkactl/cmd/create"
 	"github.com/fgrosse/kafkactl/cmd/delete"
 	"github.com/fgrosse/kafkactl/cmd/get"
+	"github.com/fgrosse/kafkactl/cmd/update"
 	"github.com/fgrosse/kafkactl/pkg"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -50,11 +51,12 @@ func New() *Kafkactl {
 	flags.BoolP("verbose", "v", false, "enable verbose output")
 	viper.BindPFlags(flags)
 
-	cmd.AddCommand(config.Command(cmd, logger, debug))
 	cmd.AddCommand(context.Command(cmd))
 	cmd.AddCommand(get.Command(cmd, logger, debug))
+	cmd.AddCommand(config.Command(cmd, logger, debug))
 	cmd.AddCommand(create.Command(cmd, logger, debug))
 	cmd.AddCommand(delete.Command(cmd, logger, debug))
+	cmd.AddCommand(update.Command(cmd, logger, debug))
 
 	cmd.PersistentPreRunE = cmd.initConfig
 

@@ -6,7 +6,7 @@ import (
 
 func (cmd *command) ConfigRenameContextCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "rename <OLD_CONTEXT_NAME> <NEW_CONTEXT_NAME>",
+		Use:   "rename <old-name> <new-name>",
 		Args:  cobra.ExactArgs(2),
 		Short: "Rename a configuration context in your kafkactl config file",
 		RunE: func(_ *cobra.Command, args []string) error {

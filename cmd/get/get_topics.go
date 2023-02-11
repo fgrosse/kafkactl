@@ -37,7 +37,7 @@ type PartitionMetadata struct {
 
 func (cmd *command) GetTopicsCmd() *cobra.Command {
 	getTopicsCmd := &cobra.Command{
-		Use:     "topics [TOPIC_NAME]",
+		Use:     "topics [name]",
 		Aliases: []string{"topic"},
 		Short:   "List one or many topics",
 		Long: "List all topics or fetch information for only a subset of topics " +
