@@ -2,10 +2,10 @@ package pkg
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 
 	"github.com/Shopify/sarama"
-	"github.com/pkg/errors"
 )
 
 type Message struct {
@@ -19,31 +19,31 @@ type Decoder interface {
 	Decode(*sarama.ConsumerMessage) (*Message, error)
 }
 
-type RawDecoder struct{}
-
 func NewTopicDecoder(topic string, conf Configuration) (Decoder, error) {
 	topicConf, err := conf.TopicConfig(topic)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to load topic configuration")
+		return nil, fmt.Errorf("failed to load topic configuration: %w", err)
 	}
 
 	switch {
 	case topicConf == nil:
 		return new(RawDecoder), nil
-	case topicConf.Decode.Proto.Type != "":
+	case topicConf.Schema.Proto.Type != "":
 		for i, s := range conf.Proto.Includes {
 			conf.Proto.Includes[i] = os.ExpandEnv(s)
 		}
 
-		return NewProtoDecoder(ProtoDecoderConfig{
+		return NewProtoDecoder(ProtoConfig{
 			Includes: conf.Proto.Includes,
-			File:     topicConf.Decode.Proto.File,
-			Type:     topicConf.Decode.Proto.Type,
+			File:     topicConf.Schema.Proto.File,
+			Type:     topicConf.Schema.Proto.Type,
 		})
 	default:
 		return new(RawDecoder), nil
 	}
 }
+
+type RawDecoder struct{}
 
 func (d *RawDecoder) Decode(msg *sarama.ConsumerMessage) (*Message, error) {
 	return &Message{

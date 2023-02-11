@@ -16,6 +16,7 @@ import (
 	"github.com/fgrosse/kafkactl/cmd/create"
 	"github.com/fgrosse/kafkactl/cmd/delete"
 	"github.com/fgrosse/kafkactl/cmd/get"
+	"github.com/fgrosse/kafkactl/cmd/produce"
 	"github.com/fgrosse/kafkactl/cmd/update"
 	"github.com/fgrosse/kafkactl/pkg"
 	"github.com/spf13/cobra"
@@ -57,6 +58,7 @@ func New() *Kafkactl {
 	cmd.AddCommand(create.Command(cmd, logger, debug))
 	cmd.AddCommand(delete.Command(cmd, logger, debug))
 	cmd.AddCommand(update.Command(cmd, logger, debug))
+	cmd.AddCommand(produce.Command(cmd, logger, debug))
 
 	cmd.PersistentPreRunE = cmd.initConfig
 

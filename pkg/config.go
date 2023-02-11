@@ -21,26 +21,26 @@ type Configuration struct {
 }
 
 type ContextConfiguration struct {
-	Name    string
-	Brokers []string
+	Name    string   `yaml:"name"`
+	Brokers []string `yaml:"brokers"`
 }
 
 type TopicConfig struct {
-	Name   string
-	Decode TopicDecoderConfig
+	Name   string            `yaml:"name"`
+	Schema TopicSchemaConfig `yaml:"schema"`
 }
 
-type TopicDecoderConfig struct {
-	Proto TopicProtoDecoderConfig
+type TopicSchemaConfig struct {
+	Proto TopicProtoConfig `yaml:"proto"`
 }
 
-type TopicProtoDecoderConfig struct {
-	Type string
-	File string
+type TopicProtoConfig struct {
+	Type string `yaml:"type"`
+	File string `yaml:"file"`
 }
 
 type GlobalProtoDecoderConfig struct {
-	Includes []string
+	Includes []string `yaml:"includes"`
 }
 
 func NewConfiguration() *Configuration {
