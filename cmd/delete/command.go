@@ -1,9 +1,10 @@
-package create
+package delete
 
 import (
 	"log"
 
 	"github.com/Shopify/sarama"
+	"github.com/fgrosse/kafkactl/pkg"
 	"github.com/spf13/cobra"
 )
 
@@ -15,8 +16,10 @@ type command struct {
 }
 
 type BaseCommand interface {
+	Configuration() *pkg.Configuration
 	SaramaConfig() *sarama.Config
 	ConnectClient(*sarama.Config) (sarama.Client, error)
+	ConnectAdmin() (sarama.ClusterAdmin, error)
 }
 
 func Command(base BaseCommand, logger, debug *log.Logger) *cobra.Command {
@@ -25,15 +28,15 @@ func Command(base BaseCommand, logger, debug *log.Logger) *cobra.Command {
 		logger:      logger,
 		debug:       debug,
 		Command: &cobra.Command{
-			Use:   "create",
-			Short: "Create resources in the Kafka cluster",
+			Use:   "delete",
+			Short: "Delete resources in the Kafka cluster",
 			Example: `
-# Create topics 
-kafkactl create topic --partitions=1 --replicas=1 --retention=7d [TOPIC_NAME]`,
+# Delete topic
+kafkactl delete topic [TOPIC_NAME]`,
 		},
 	}
 
-	cmd.AddCommand(cmd.CreateTopicCmd())
+	cmd.AddCommand(cmd.DeleteTopicCmd())
 
 	return cmd.Command
 }
