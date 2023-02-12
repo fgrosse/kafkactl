@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/Shopify/sarama"
@@ -69,7 +70,7 @@ func (d *ProtoDecoder) Decode(msg *sarama.ConsumerMessage) (*Message, error) {
 	}
 
 	return &Message{
-		Value:     value,
+		Value:     json.RawMessage(value),
 		Topic:     msg.Topic,
 		Partition: msg.Partition,
 		Offset:    msg.Offset,

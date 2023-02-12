@@ -12,6 +12,7 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/fgrosse/kafkactl/cmd/config"
+	"github.com/fgrosse/kafkactl/cmd/consume"
 	"github.com/fgrosse/kafkactl/cmd/context"
 	"github.com/fgrosse/kafkactl/cmd/create"
 	"github.com/fgrosse/kafkactl/cmd/delete"
@@ -59,6 +60,7 @@ func New() *Kafkactl {
 	cmd.AddCommand(delete.Command(cmd, logger, debug))
 	cmd.AddCommand(update.Command(cmd, logger, debug))
 	cmd.AddCommand(produce.Command(cmd, logger, debug))
+	cmd.AddCommand(consume.Command(cmd, logger, debug))
 
 	cmd.PersistentPreRunE = cmd.initConfig
 

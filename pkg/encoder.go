@@ -19,7 +19,7 @@ func NewTopicEncoder(topic string, conf Configuration) (Encoder, error) {
 
 	switch {
 	case topicConf == nil:
-		return new(RawEncoder), nil
+		return new(StringEncoder), nil
 	case topicConf.Schema.Proto.Type != "":
 		for i, s := range conf.Proto.Includes {
 			conf.Proto.Includes[i] = os.ExpandEnv(s)
@@ -31,12 +31,12 @@ func NewTopicEncoder(topic string, conf Configuration) (Encoder, error) {
 			Type:     topicConf.Schema.Proto.Type,
 		})
 	default:
-		return new(RawEncoder), nil
+		return new(StringEncoder), nil
 	}
 }
 
-type RawEncoder struct{}
+type StringEncoder struct{}
 
-func (e *RawEncoder) Encode(msg string) (sarama.Encoder, error) {
+func (e *StringEncoder) Encode(msg string) (sarama.Encoder, error) {
 	return sarama.StringEncoder(msg), nil
 }

@@ -18,7 +18,7 @@ import (
 type Topic struct {
 	Name              string
 	Partitions        []PartitionMetadata `table:"-"`
-	Consumers         []string            `table:"-"`
+	ConsumerGroups    []string            `table:"-"`
 	NumPartitions     int32               `json:"-" yaml:"-" table:"PARTITIONS"`
 	ReplicationFactor int16               `table:"REPLICATION"`
 	Retention         string              `table:"RETENTION"`
@@ -210,7 +210,7 @@ func (cmd *command) assignTopicConsumers(admin sarama.ClusterAdmin, topics []Top
 			continue
 		}
 
-		topic.Consumers = groups
+		topic.ConsumerGroups = groups
 		topics[i] = topic
 	}
 

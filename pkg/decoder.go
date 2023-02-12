@@ -1,7 +1,6 @@
 package pkg
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 
@@ -9,10 +8,10 @@ import (
 )
 
 type Message struct {
-	Topic     string          `json:"topic"`
-	Partition int32           `json:"partition"`
-	Offset    int64           `json:"offset"`
-	Value     json.RawMessage `json:"value"`
+	Topic     string `json:"topic"`
+	Partition int32  `json:"partition"`
+	Offset    int64  `json:"offset"`
+	Value     any    `json:"value"`
 }
 
 type Decoder interface {
@@ -27,7 +26,7 @@ func NewTopicDecoder(topic string, conf Configuration) (Decoder, error) {
 
 	switch {
 	case topicConf == nil:
-		return new(RawDecoder), nil
+		return new(StringDecoder), nil
 	case topicConf.Schema.Proto.Type != "":
 		for i, s := range conf.Proto.Includes {
 			conf.Proto.Includes[i] = os.ExpandEnv(s)
@@ -39,15 +38,16 @@ func NewTopicDecoder(topic string, conf Configuration) (Decoder, error) {
 			Type:     topicConf.Schema.Proto.Type,
 		})
 	default:
-		return new(RawDecoder), nil
+		return new(StringDecoder), nil
 	}
 }
 
-type RawDecoder struct{}
+// The StringDecoder assumes that the values of all consumed messages are unicode strings.
+type StringDecoder struct{}
 
-func (d *RawDecoder) Decode(msg *sarama.ConsumerMessage) (*Message, error) {
+func (d *StringDecoder) Decode(msg *sarama.ConsumerMessage) (*Message, error) {
 	return &Message{
-		Value:     msg.Value,
+		Value:     string(msg.Value),
 		Topic:     msg.Topic,
 		Partition: msg.Partition,
 		Offset:    msg.Offset,

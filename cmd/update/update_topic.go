@@ -24,7 +24,7 @@ Hint: You can use "kafkactl get config --topic <name>" to see the current
 `,
 		Example: `
   # Update the topic retention configuration
-  kafkactl update topic my-topic retention.ms=12000`,
+  kafkactl update topic "example-topic" retention.ms=12000`,
 		RunE: func(_ *cobra.Command, args []string) error {
 			name := args[0]
 			kvPairs, err := cmd.parseKeyValuePairs(args[1:])
