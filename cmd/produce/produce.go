@@ -42,8 +42,8 @@ func (cmd *command) produce(ctx context.Context, topic string) error {
 	}
 
 	c, err := cmd.ConnectClient(cmd.SaramaConfig())
-	if ctx.Err() != nil {
-		return nil
+	if err != nil {
+		return err
 	}
 
 	defer c.Close()
