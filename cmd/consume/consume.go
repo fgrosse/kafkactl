@@ -6,12 +6,10 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-	"sync"
 
 	"github.com/Shopify/sarama"
 	"github.com/fgrosse/cli"
 	"github.com/fgrosse/kafkactl/pkg"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -49,15 +47,15 @@ messages by sending SIGINT, SIGQUIT or SIGTERM to the process (e.g. by pressing 
 		RunE: func(_ *cobra.Command, args []string) error {
 			ctx := cli.Context()
 			topic := args[0]
-			partition := viper.GetInt32("partition")
+			partitions := viper.GetIntSlice("partition")
 			offset := viper.GetString("offset")
 			outputEncoding := viper.GetString("output")
-			return cmd.consume(ctx, topic, partition, offset, outputEncoding)
+			return cmd.consume(ctx, topic, partitions, offset, outputEncoding)
 		},
 	}
 
 	flags := produceCmd.Flags()
-	flags.Int32("partition", -1, "Kafka topic partition. -1 means all partitions")
+	flags.IntSlice("partition", nil, "Kafka topic partition. Can be passed multiple times. By default all partitions are consumed")
 	flags.String("offset", "newest", `either "oldest", "newest" or an integer`)
 	flags.StringP("output", "o", "raw", "output format. One of raw|json. See --help output for more information")
 	// TODO: support joining a consumer group
@@ -65,7 +63,7 @@ messages by sending SIGINT, SIGQUIT or SIGTERM to the process (e.g. by pressing 
 	return produceCmd
 }
 
-func (cmd *command) consume(ctx context.Context, topic string, partition int32, offsetStr, outputEncoding string) error {
+func (cmd *command) consume(ctx context.Context, topic string, partitions []int, offsetStr, outputEncoding string) error {
 	var offset int64
 	switch offsetStr {
 	case "oldest", "first":
@@ -86,7 +84,7 @@ func (cmd *command) consume(ctx context.Context, topic string, partition int32, 
 		return err
 	}
 
-	messages, err := cmd.simpleConsumer(ctx, topic, partition, offset)
+	messages, err := cmd.simpleConsumer(ctx, topic, partitions, offset)
 	if err != nil {
 		return err
 	}
@@ -113,7 +111,7 @@ func (cmd *command) consume(ctx context.Context, topic string, partition int32, 
 	return nil
 }
 
-func (cmd *command) simpleConsumer(ctx context.Context, topic string, partition int32, offset int64) (<-chan *sarama.ConsumerMessage, error) {
+func (cmd *command) simpleConsumer(ctx context.Context, topic string, partitions []int, offset int64) (<-chan *sarama.ConsumerMessage, error) {
 	conf := cmd.Configuration()
 	saramaConf := cmd.SaramaConfig()
 	saramaConf.Consumer.Return.Errors = false // TODO
@@ -124,69 +122,18 @@ func (cmd *command) simpleConsumer(ctx context.Context, topic string, partition 
 		return nil, fmt.Errorf("failed to create consumer: %w", err)
 	}
 
-	if partition >= 0 {
-		return cmd.consumeSinglePartition(ctx, c, topic, partition, offset)
-	}
+	con := pkg.NewConsumer(c)
 
-	return cmd.consumeAllPartitions(ctx, c, topic, offset)
-}
-
-func (cmd *command) consumeSinglePartition(ctx context.Context, c sarama.Consumer, topic string, partition int32, offset int64) (<-chan *sarama.ConsumerMessage, error) {
-	con, err := c.ConsumePartition(topic, partition, offset)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to consume topic partition")
-	}
-
-	go func() {
-		<-ctx.Done()
-		con.AsyncClose()
-	}()
-
-	cmd.debug.Printf("Consuming topic %q partition %d starting at offset %d", topic, partition, offset)
-	return con.Messages(), nil
-}
-
-func (cmd *command) consumeAllPartitions(ctx context.Context, c sarama.Consumer, topic string, offset int64) (<-chan *sarama.ConsumerMessage, error) {
-	partitions, err := c.Partitions(topic)
-	if err != nil {
-		return nil, errors.Wrap(err, "get partitions")
-	}
-
-	var wg sync.WaitGroup
-	messages := make(chan *sarama.ConsumerMessage, len(partitions))
-
-	for _, partition := range partitions {
-		con, err := c.ConsumePartition(topic, partition, offset)
-		if err != nil {
-			return nil, errors.Wrapf(err, "consume partition %d", partition)
-		}
-
-		output := func(partitionMessages <-chan *sarama.ConsumerMessage) {
-			defer wg.Done()
-			for msg := range partitionMessages {
-				select {
-				case messages <- msg:
-				case <-ctx.Done():
-					return
-				}
+	if len(partitions) > 0 {
+		pp := make([]pkg.PartitionOffset, len(partitions))
+		for i, p := range partitions {
+			pp[i] = pkg.PartitionOffset{
+				Partition: int32(p),
+				Offset:    offset,
 			}
 		}
-
-		wg.Add(1)
-		go output(con.Messages())
-
-		// Close this partition consumer when the context is done.
-		go func() {
-			<-ctx.Done()
-			con.AsyncClose()
-		}()
+		return con.ConsumePartitions(ctx, topic, pp)
 	}
 
-	// When all individual partition consumers are done, close the messages channel.
-	go func() {
-		wg.Wait()
-		close(messages)
-	}()
-
-	return messages, nil
+	return con.ConsumeAllPartitions(ctx, topic, offset)
 }

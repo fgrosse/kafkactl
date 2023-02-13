@@ -149,17 +149,9 @@ func (cmd *command) connectSource(ctx context.Context, topic string, partition i
 		return nil, fmt.Errorf("failed to create consumer: %w", err)
 	}
 
-	var startOffset int64
-	switch fromOffset {
-	case "oldest":
-		startOffset = sarama.OffsetOldest
-	case "newest":
-		startOffset = sarama.OffsetNewest
-	default:
-		startOffset, err = strconv.ParseInt(fromOffset, 10, 0)
-		if err != nil {
-			return nil, errors.New("invalid --from value")
-		}
+	startOffset, err := parseOffset(fromOffset)
+	if err != nil {
+		return nil, fmt.Errorf("invalid --from value")
 	}
 
 	var maxOffset int64
@@ -211,6 +203,17 @@ func (cmd *command) connectSource(ctx context.Context, topic string, partition i
 	}()
 
 	return messages, nil
+}
+
+func parseOffset(offset string) (int64, error) {
+	switch offset {
+	case "oldest":
+		return sarama.OffsetOldest, nil
+	case "newest":
+		return sarama.OffsetNewest, nil
+	default:
+		return strconv.ParseInt(offset, 10, 0)
+	}
 }
 
 func (cmd *command) connectDestination(destContext string) (sarama.SyncProducer, error) {
