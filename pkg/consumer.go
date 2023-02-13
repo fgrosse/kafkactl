@@ -59,28 +59,27 @@ func (c *Consumer) ConsumeAllPartitions(ctx context.Context, topic string, start
 }
 
 func (c *Consumer) ConsumePartitions(ctx context.Context, topic string, partitions []PartitionOffset) (<-chan *sarama.ConsumerMessage, error) {
+	consumers, err := c.connectPartitionConsumers(topic, partitions)
+	if err != nil {
+		return nil, err
+	}
+
 	var wg sync.WaitGroup
 	messages := make(chan *sarama.ConsumerMessage, len(partitions))
-
-	for _, partition := range partitions {
-		con, err := c.con.ConsumePartition(topic, partition.Partition, partition.Offset)
-		if err != nil {
-			return nil, errors.Wrapf(err, "consume partition %d", partition)
-		}
-
+	for _, con := range consumers {
 		wg.Add(1)
-		go func() {
+		go func(con sarama.PartitionConsumer) {
 			defer wg.Done()
 			for msg := range con.Messages() {
 				messages <- msg
 			}
-		}()
+		}(con)
 
 		// Close this partition consumer when the context is done.
-		go func() {
+		go func(con sarama.PartitionConsumer) {
 			<-ctx.Done()
 			con.AsyncClose()
-		}()
+		}(con)
 	}
 
 	// When all individual partition consumers are done, close the messages channel.
@@ -90,4 +89,47 @@ func (c *Consumer) ConsumePartitions(ctx context.Context, topic string, partitio
 	}()
 
 	return messages, nil
+}
+
+func (c *Consumer) connectPartitionConsumers(topic string, partitions []PartitionOffset) ([]sarama.PartitionConsumer, error) {
+	type result struct {
+		con sarama.PartitionConsumer
+		err error
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(len(partitions))
+
+	results := make(chan result)
+	for _, p := range partitions {
+		go func(p PartitionOffset) {
+			con, err := c.con.ConsumePartition(topic, p.Partition, p.Offset)
+			results <- result{con: con, err: err}
+			wg.Done()
+		}(p)
+	}
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	var consumers []sarama.PartitionConsumer
+	var err error
+	for r := range results {
+		if r.err != nil {
+			err = r.err
+			continue
+		}
+		consumers = append(consumers, r.con)
+	}
+
+	if err != nil {
+		for _, c := range consumers {
+			_ = c.Close()
+		}
+		return nil, err
+	}
+
+	return consumers, nil
 }
