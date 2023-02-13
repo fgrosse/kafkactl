@@ -18,6 +18,7 @@ import (
 	"github.com/fgrosse/kafkactl/cmd/delete"
 	"github.com/fgrosse/kafkactl/cmd/get"
 	"github.com/fgrosse/kafkactl/cmd/produce"
+	"github.com/fgrosse/kafkactl/cmd/replay"
 	"github.com/fgrosse/kafkactl/cmd/update"
 	"github.com/fgrosse/kafkactl/pkg"
 	"github.com/spf13/cobra"
@@ -61,6 +62,7 @@ func New() *Kafkactl {
 	cmd.AddCommand(update.Command(cmd, logger, debug))
 	cmd.AddCommand(produce.Command(cmd, logger, debug))
 	cmd.AddCommand(consume.Command(cmd, logger, debug))
+	cmd.AddCommand(replay.Command(cmd, logger, debug))
 
 	cmd.PersistentPreRunE = cmd.initConfig
 
@@ -108,6 +110,10 @@ func (cmd *Kafkactl) loadConfiguration() error {
 		return err
 	}
 
+	if c := viper.GetString("context"); c != "" {
+		cmd.conf.CurrentContext = c
+	}
+
 	return nil
 }
 
@@ -149,7 +155,8 @@ func (cmd *Kafkactl) ConnectClient(conf *sarama.Config) (sarama.Client, error) {
 		return nil, err
 	}
 
-	brokers := cmd.conf.Brokers()
+	context := cmd.conf.CurrentContext
+	brokers := cmd.conf.Brokers(context)
 
 	if len(brokers) == 0 {
 		return nil, errors.New("need at least one broker")
@@ -164,7 +171,8 @@ func (cmd *Kafkactl) ConnectAdmin() (sarama.ClusterAdmin, error) {
 		return nil, err
 	}
 
-	brokers := cmd.conf.Brokers()
+	context := cmd.conf.CurrentContext
+	brokers := cmd.conf.Brokers(context)
 
 	if len(brokers) == 0 {
 		return nil, errors.New("need at least one broker")

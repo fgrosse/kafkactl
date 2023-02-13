@@ -212,10 +212,10 @@ func (conf *Configuration) RenameContext(oldName, newName string) error {
 	return nil
 }
 
-func (conf *Configuration) Brokers() []string {
+func (conf *Configuration) Brokers(context string) []string {
 	var brokers []string
 	for _, c := range conf.Contexts {
-		if c.Name != conf.CurrentContext {
+		if c.Name != context {
 			continue
 		}
 

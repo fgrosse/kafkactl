@@ -409,21 +409,17 @@ func TestConfiguration_Brokers(t *testing.T) {
 		},
 	}
 
-	conf.CurrentContext = "prod"
-	actual := conf.Brokers()
+	actual := conf.Brokers("prod")
 	expected := []string{"prod1.example.com:9092", "prod2.example.com:9092"}
 	assert.Equal(t, expected, actual)
 
-	conf.CurrentContext = ""
-	actual = conf.Brokers()
+	actual = conf.Brokers("")
 	assert.Empty(t, actual)
 
-	conf.CurrentContext = "unknown-context"
-	actual = conf.Brokers()
+	actual = conf.Brokers("unknown-context")
 	assert.Empty(t, actual)
 
-	conf.CurrentContext = "staging"
-	actual = conf.Brokers()
+	actual = conf.Brokers("staging")
 	expected = []string{"staging.example.com:9092"}
 	assert.Equal(t, expected, actual)
 }

@@ -52,29 +52,27 @@ func NewProtoDecoder(conf ProtoConfig) (*ProtoDecoder, error) {
 }
 
 func (d *ProtoDecoder) Decode(msg *sarama.ConsumerMessage) (*Message, error) {
-	protoMsg := dynamic.NewMessage(d.typ)
-	err := protoMsg.Unmarshal(msg.Value)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode message as proto %s: %w", d.typ.GetName(), err)
-	}
+	return newMessage(msg, func(value []byte) (any, error) {
+		protoMsg := dynamic.NewMessage(d.typ)
+		err := protoMsg.Unmarshal(msg.Value)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode message as proto %s: %w", d.typ.GetName(), err)
+		}
 
-	marshaler := &jsonpb.Marshaler{
-		OrigName:     true,
-		EnumsAsInts:  false,
-		EmitDefaults: true,
-		Indent:       "  ",
-	}
-	value, err := protoMsg.MarshalJSONPB(marshaler)
-	if err != nil {
-		return nil, fmt.Errorf("failed to re-encode message as JSON: %w", err)
-	}
+		marshaler := &jsonpb.Marshaler{
+			OrigName:     true,
+			EnumsAsInts:  false,
+			EmitDefaults: true,
+			Indent:       "  ",
+		}
 
-	return &Message{
-		Value:     json.RawMessage(value),
-		Topic:     msg.Topic,
-		Partition: msg.Partition,
-		Offset:    msg.Offset,
-	}, nil
+		val, err := protoMsg.MarshalJSONPB(marshaler)
+		if err != nil {
+			return nil, fmt.Errorf("failed to re-encode message as JSON: %w", err)
+		}
+
+		return json.RawMessage(val), nil
+	})
 }
 
 func NewProtoEncoder(conf ProtoConfig) (*ProtoEncoder, error) {

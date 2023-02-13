@@ -114,11 +114,12 @@ func (cmd *command) consume(ctx context.Context, topic string, partition int32, 
 }
 
 func (cmd *command) simpleConsumer(ctx context.Context, topic string, partition int32, offset int64) (<-chan *sarama.ConsumerMessage, error) {
-	conf := cmd.SaramaConfig()
-	conf.Consumer.Return.Errors = false // TODO
+	conf := cmd.Configuration()
+	saramaConf := cmd.SaramaConfig()
+	saramaConf.Consumer.Return.Errors = false // TODO
 
-	brokers := cmd.Configuration().Brokers()
-	c, err := sarama.NewConsumer(brokers, conf)
+	brokers := conf.Brokers(conf.CurrentContext)
+	c, err := sarama.NewConsumer(brokers, saramaConf)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create consumer: %w", err)
 	}

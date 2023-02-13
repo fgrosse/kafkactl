@@ -3,15 +3,19 @@ package pkg
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/Shopify/sarama"
 )
 
 type Message struct {
-	Topic     string `json:"topic"`
-	Partition int32  `json:"partition"`
-	Offset    int64  `json:"offset"`
-	Value     any    `json:"value"`
+	Topic     string              `json:"topic"`
+	Partition int32               `json:"partition"`
+	Offset    int64               `json:"offset"`
+	Headers   map[string][]string `json:"headers"`
+	Timestamp time.Time           `json:"ts"`
+	Key       string              `json:"key"`
+	Value     any                 `json:"value"`
 }
 
 type Decoder interface {
@@ -46,10 +50,31 @@ func NewTopicDecoder(topic string, conf Configuration) (Decoder, error) {
 type StringDecoder struct{}
 
 func (d *StringDecoder) Decode(msg *sarama.ConsumerMessage) (*Message, error) {
-	return &Message{
-		Value:     string(msg.Value),
-		Topic:     msg.Topic,
-		Partition: msg.Partition,
-		Offset:    msg.Offset,
-	}, nil
+	return newMessage(msg, func(value []byte) (any, error) {
+		return string(value), nil
+	})
+}
+
+func newMessage(m *sarama.ConsumerMessage, decodeValue func([]byte) (any, error)) (*Message, error) {
+	decoded, err := decodeValue(m.Value)
+	if err != nil {
+		return nil, err
+	}
+
+	msg := &Message{
+		Key:       string(m.Key),
+		Value:     decoded,
+		Topic:     m.Topic,
+		Partition: m.Partition,
+		Offset:    m.Offset,
+		Timestamp: m.Timestamp,
+	}
+
+	msg.Headers = map[string][]string{}
+	for _, h := range m.Headers {
+		key := string(h.Key)
+		msg.Headers[key] = append(msg.Headers[key], string(h.Value))
+	}
+
+	return msg, nil
 }
