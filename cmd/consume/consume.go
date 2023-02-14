@@ -56,7 +56,7 @@ messages by sending SIGINT, SIGQUIT or SIGTERM to the process (e.g. by pressing 
 
 	flags := produceCmd.Flags()
 	flags.IntSlice("partition", nil, "Kafka topic partition. Can be passed multiple times. By default all partitions are consumed")
-	flags.String("offset", "newest", `either "oldest", "newest" or an integer`)
+	flags.String("offset", "newest", `either "oldest" or "newest". Can be an integer when consuming only a single partition`)
 	flags.StringP("output", "o", "raw", "output format. One of raw|json. See --help output for more information")
 	// TODO: support joining a consumer group
 
@@ -112,19 +112,26 @@ func (cmd *command) consume(ctx context.Context, topic string, partitions []int,
 }
 
 func (cmd *command) simpleConsumer(ctx context.Context, topic string, partitions []int, offset int64) (<-chan *sarama.ConsumerMessage, error) {
-	conf := cmd.Configuration()
 	saramaConf := cmd.SaramaConfig()
 	saramaConf.Consumer.Return.Errors = false // TODO
 
-	brokers := conf.Brokers(conf.CurrentContext)
-	c, err := sarama.NewConsumer(brokers, saramaConf)
+	client, err := cmd.ConnectClient(saramaConf)
+	if err != nil {
+		return nil, err
+	}
+	c, err := sarama.NewConsumerFromClient(client)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create consumer: %w", err)
 	}
 
 	con := pkg.NewConsumer(c)
 
-	if len(partitions) > 0 {
+	switch len(partitions) {
+	case 0:
+		return con.ConsumeAllPartitions(ctx, topic, offset)
+	case 1:
+		return con.ConsumePartition(ctx, topic, int32(partitions[0]), offset)
+	default:
 		pp := make([]pkg.PartitionOffset, len(partitions))
 		for i, p := range partitions {
 			pp[i] = pkg.PartitionOffset{
@@ -134,6 +141,4 @@ func (cmd *command) simpleConsumer(ctx context.Context, topic string, partitions
 		}
 		return con.ConsumePartitions(ctx, topic, pp)
 	}
-
-	return con.ConsumeAllPartitions(ctx, topic, offset)
 }

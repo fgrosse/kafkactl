@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/Shopify/sarama"
-	"github.com/pkg/errors"
 )
 
 type Consumer struct {
@@ -26,7 +25,7 @@ func NewConsumer(con sarama.Consumer) *Consumer {
 func (c *Consumer) ConsumePartition(ctx context.Context, topic string, partition int32, offset int64) (<-chan *sarama.ConsumerMessage, error) {
 	con, err := c.con.ConsumePartition(topic, partition, offset)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to consume topic partition")
+		return nil, fmt.Errorf("failed to consume topic partition: %w", err)
 	}
 
 	go func() {
@@ -44,7 +43,7 @@ func (c *Consumer) ConsumeAllPartitions(ctx context.Context, topic string, start
 
 	partitions, err := c.con.Partitions(topic)
 	if err != nil {
-		return nil, errors.Wrap(err, "get partitions")
+		return nil, fmt.Errorf("failed to determine amount of partitions: %w", err)
 	}
 
 	startOffsets := make([]PartitionOffset, len(partitions))
@@ -59,21 +58,35 @@ func (c *Consumer) ConsumeAllPartitions(ctx context.Context, topic string, start
 }
 
 func (c *Consumer) ConsumePartitions(ctx context.Context, topic string, partitions []PartitionOffset) (<-chan *sarama.ConsumerMessage, error) {
-	consumers, err := c.connectPartitionConsumers(topic, partitions)
-	if err != nil {
-		return nil, err
+	var wg sync.WaitGroup
+	wg.Add(len(partitions))
+
+	messages := make(chan *sarama.ConsumerMessage, len(partitions))
+	consumePartition := func(con sarama.PartitionConsumer) {
+		defer wg.Done()
+		for msg := range con.Messages() {
+			messages <- msg
+		}
 	}
 
-	var wg sync.WaitGroup
-	messages := make(chan *sarama.ConsumerMessage, len(partitions))
+	go func() {
+		wg.Wait()
+		close(messages)
+	}()
+
+	c.ProcessPartitions(ctx, topic, partitions, consumePartition)
+	return messages, nil
+}
+
+func (c *Consumer) ProcessPartitions(ctx context.Context, topic string, partitions []PartitionOffset, process func(sarama.PartitionConsumer)) error {
+	consumers, err := c.connectPartitionConsumers(topic, partitions)
+	if err != nil {
+		return err
+	}
+
 	for _, con := range consumers {
-		wg.Add(1)
-		go func(con sarama.PartitionConsumer) {
-			defer wg.Done()
-			for msg := range con.Messages() {
-				messages <- msg
-			}
-		}(con)
+		// Start processing this partition.
+		go process(con)
 
 		// Close this partition consumer when the context is done.
 		go func(con sarama.PartitionConsumer) {
@@ -82,19 +95,17 @@ func (c *Consumer) ConsumePartitions(ctx context.Context, topic string, partitio
 		}(con)
 	}
 
-	// When all individual partition consumers are done, close the messages channel.
-	go func() {
-		wg.Wait()
-		close(messages)
-	}()
-
-	return messages, nil
+	return nil
 }
 
+// connectPartitionConsumers sets up a sarama.PartitionConsumer for each PartitionOffset.
+// Each partition consumer is connected concurrently which is a lot faster than
+// doing this sequentially.
 func (c *Consumer) connectPartitionConsumers(topic string, partitions []PartitionOffset) ([]sarama.PartitionConsumer, error) {
 	type result struct {
-		con sarama.PartitionConsumer
-		err error
+		partition int32
+		con       sarama.PartitionConsumer
+		err       error
 	}
 
 	var wg sync.WaitGroup
@@ -104,7 +115,11 @@ func (c *Consumer) connectPartitionConsumers(topic string, partitions []Partitio
 	for _, p := range partitions {
 		go func(p PartitionOffset) {
 			con, err := c.con.ConsumePartition(topic, p.Partition, p.Offset)
-			results <- result{con: con, err: err}
+			results <- result{
+				partition: p.Partition,
+				con:       con,
+				err:       err,
+			}
 			wg.Done()
 		}(p)
 	}
