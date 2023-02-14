@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/Shopify/sarama"
@@ -37,11 +39,14 @@ Note that you can pass one or many offsets to this command.
   kafkactl replay --topic example-topic
 
   # Dry-run a replay of specific message into the same topic
-  kafkactl replay --topic example-topic --offset 42 --dry-run
+  kafkactl replay --topic example-topic --partition=2 --offset 42 --dry-run
   
   # Replay an offset range at once into another topic
   kafkactl replay --topic foo --dest-topic bar --from 123 --until 145
   
+  # Replay multiple specific messages across different partitions
+  kafkactl replay --topic example-topic --offsets-file replay_offsets.json
+
   # Replay all messages into another Kafka cluster indefinitely
   kafkactl replay \
     --context=localhost \
@@ -58,6 +63,7 @@ Note that you can pass one or many offsets to this command.
 			srcPartitions := viper.GetIntSlice("partition")
 			fromOffset := viper.GetString("from")
 			untilOffset := viper.GetString("until")
+			offsetStr := viper.GetString("offset")
 
 			destContext := viper.GetString("dest-context")
 			destTopic := viper.GetString("dest-topic")
@@ -65,6 +71,7 @@ Note that you can pass one or many offsets to this command.
 			dryRun := viper.GetBool("dry-run")
 			markReplayed := viper.GetBool("mark-replayed")
 			inf := viper.GetBool("inf")
+			fetchSize := viper.GetInt32("fetch-size")
 
 			conf := cmd.Configuration()
 			if srcContext == "" {
@@ -90,11 +97,26 @@ Note that you can pass one or many offsets to this command.
 				partitions[i] = int32(p)
 			}
 
+			var offsets []int64
+			for _, s := range strings.Split(offsetStr, ",") {
+				s = strings.TrimSpace(s)
+				if s == "" {
+					continue
+				}
+
+				o, err := strconv.ParseInt(s, 10, 0)
+				if err != nil {
+					return fmt.Errorf("--offset value cannot be parsed as integer")
+				}
+				offsets = append(offsets, o)
+			}
+
 			return cmd.replay(ctx,
 				srcContext, srcTopic, partitions,
 				destContext, destTopic,
-				fromOffset, untilOffset,
+				fromOffset, untilOffset, offsets,
 				dryRun, markReplayed,
+				fetchSize,
 			)
 		},
 	}
@@ -107,13 +129,14 @@ Note that you can pass one or many offsets to this command.
 
 	flags.Bool("dry-run", false, "do not actually write any messages back to Kafka")
 	flags.Bool("mark-replayed", true, "mark each message as replayed via the Kafka message header (default true)")
-	// flags.Int32("fetch-size", defaultFetchSize, "Kafka max fetch size")
+	flags.Int32("fetch-size", defaultFetchSize, "Kafka max fetch size")
 	// flags.Bool("async", false, "use an async producer (faster)")
 
-	// flags.String("offsets-file", "", "a file containing one offset per line")
 	flags.String("from", "oldest", `offset of first message to replay (either "oldest" or "newest", can be an integer when consuming only a single partition)`)
 	flags.String("until", "newest", `offset of last message to replay (either "newest" or an integer when consuming only a single partition)`)
 	flags.Bool("inf", false, "keep replaying new messages indefinitely (overriding any --until value)")
+	flags.String("offset", "", "a comma separated list of offsets of messages to replay (takes precedence over --from, --until or --inf)")
+	// flags.StringP("offsets-file", "f", "", "a JSON file containing individual offsets to replay")
 
 	_ = replayCmd.MarkFlagRequired("topic")
 
@@ -124,12 +147,13 @@ func (cmd *command) replay(
 	ctx context.Context,
 	srcContext, srcTopic string, srcPartition []int32,
 	destContext, destTopic string,
-	fromOffset, untilOffset string,
+	fromOffset, untilOffset string, offsets []int64,
 	dryRun, markReplayed bool,
+	fetchSize int32,
 ) error {
-	input, err := cmd.connectSource(ctx, srcTopic, srcPartition, fromOffset, untilOffset)
+	input, err := cmd.connectSource(ctx, srcTopic, srcPartition, fromOffset, untilOffset, offsets, fetchSize)
 	if err != nil {
-		return fmt.Errorf("failed to connect to source: %w", err)
+		return err
 	}
 
 	producer, err := cmd.connectDestination(destContext)
@@ -140,98 +164,104 @@ func (cmd *command) replay(
 	return cmd.sendMessages(input, producer, srcContext, destContext, destTopic, dryRun, markReplayed)
 }
 
-func (cmd *command) connectSource(ctx context.Context, topic string, partitionIDs []int32, fromOffset, untilOffset string) (<-chan *sarama.ConsumerMessage, error) {
-	client, con, err := cmd.newSourceConsumer()
+func (cmd *command) connectSource(ctx context.Context, topic string, partitionIDs []int32, fromOffset, untilOffset string, offsets []int64, fetchSize int32) (<-chan *sarama.ConsumerMessage, error) {
+	client, err := cmd.newSourceConsumer()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create consumer: %w", err)
 	}
 
 	if len(partitionIDs) == 0 {
-		partitionIDs, err = con.Partitions(topic)
+		partitionIDs, err = client.Partitions(topic)
 		if err != nil {
 			return nil, fmt.Errorf("failed to determine amount of partitions: %w", err)
 		}
 	}
 
-	startOffset, err := parseFromOffset(fromOffset, partitionIDs)
-	if err != nil {
-		return nil, fmt.Errorf("invalid --from value")
+	if len(offsets) > 0 && len(partitionIDs) != 1 {
+		return nil, fmt.Errorf("cannot use --offset when consuming multiple partitions.\nPlease specify one partition using --partition or use --offsets-file to configure each partition offset separately")
 	}
 
-	maxOffsets, err := parseUntilOffset(untilOffset, client, topic, partitionIDs)
-	if err != nil {
-		return nil, err
+	if len(offsets) > 0 {
+		return cmd.consumeOffsets(ctx, client, topic, partitionIDs[0], offsets, fetchSize)
 	}
 
-	var partitions []pkg.PartitionOffset
-	for _, partition := range partitionIDs {
-		if maxOffsets[partition] == -1 {
-			// We want to read up until the most recent message but this partition
-			// has never received any. Therefore, we don't need to process anything.
-			cmd.logger.Printf("Ignoring topic %q partition %d because it contains no messages", topic, partition)
-			continue
-		}
-
-		partitions = append(partitions, pkg.PartitionOffset{
-			Partition: partition,
-			Offset:    startOffset,
-		})
-	}
-
-	for _, p := range partitions {
-		partition := p.Partition
-		if untilOffset != "" {
-			maxOffset := maxOffsets[partition]
-			cmd.logger.Printf("Consuming topic %q partition %d starting at offset %q until offset %d", topic, partition, fromOffset, maxOffset)
-		} else {
-			cmd.logger.Printf("Consuming topic %q partition %d starting at offset %q indefinitely", topic, partition, fromOffset)
-		}
-	}
-
-	var wg sync.WaitGroup
-	wg.Add(len(partitions))
-
-	messages := make(chan *sarama.ConsumerMessage, len(partitions))
-	consumePartition := func(con sarama.PartitionConsumer) {
-		defer wg.Done()
-
-		for msg := range con.Messages() {
-			messages <- msg
-
-			maxOffset, ok := maxOffsets[msg.Partition]
-			if ok && msg.Offset == maxOffset {
-				con.Close()
-				cmd.debug.Printf("Partition consumer %d has reached its maximum offset", msg.Partition)
-				return
-			}
-		}
-	}
-
-	go func() {
-		wg.Wait()
-		close(messages)
-	}()
-
-	consumer := pkg.NewConsumer(con)
-	err = consumer.ProcessPartitions(ctx, topic, partitions, consumePartition)
-	if err != nil {
-		return nil, err
-	}
-
-	return messages, nil
+	return cmd.consumeRange(ctx, client, topic, partitionIDs, fromOffset, untilOffset)
 }
 
-func (cmd *command) newSourceConsumer() (sarama.Client, sarama.Consumer, error) {
+func (cmd *command) newSourceConsumer() (sarama.Client, error) {
 	conf := cmd.SaramaConfig()
 	conf.Consumer.Return.Errors = false // TODO: log consumer errors
 
 	client, err := cmd.ConnectClient(conf)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	con, err := sarama.NewConsumerFromClient(client)
-	return client, con, err
+	return client, nil
+}
+
+func (cmd *command) consumeOffsets(ctx context.Context, client sarama.Client, topic string, partition int32, offsets []int64, fetchSize int32) (<-chan *sarama.ConsumerMessage, error) {
+	broker, err := client.Leader(topic, partition)
+	if err != nil {
+		return nil, fmt.Errorf("failed to determine leader for partition %d of topic %q: %w", partition, topic, err)
+	}
+
+	sort.Slice(offsets, func(i, j int) bool {
+		return offsets[i] < offsets[j]
+	})
+
+	pending := map[int64]bool{}
+	for _, o := range offsets {
+		pending[o] = true
+	}
+
+	messages := make(chan *sarama.ConsumerMessage)
+	cmd.logger.Printf("Reading individual messages from topic %q partition %d offsets %v", topic, partition, offsets)
+	go func() {
+		defer close(messages)
+
+		for _, offset := range offsets {
+			if !pending[offset] {
+				// We already got this message with an earlier request (see comment below).
+				continue
+			}
+
+			fetched, err := pkg.FetchMessages(broker, topic, partition, offset, fetchSize, cmd.debug)
+			if err != nil {
+				cmd.logger.Printf("ERROR: offset=%d: %v", offset, err)
+				continue
+			}
+
+			// Due to the nature of Offset-fetches on Kafka it is possible to
+			// receive more messages than what we asked for if they fit into the
+			// requested fetch size. This is a server side optimization because
+			// Kafka assumes we are processing messages sequentially.
+
+			cmd.debug.Printf("Received %d messages for topic=%q partition=%d offset=%d", len(fetched), topic, partition, offset)
+
+			if len(fetched) == 0 {
+				cmd.logger.Printf("ERROR: Kafka returned no message for topic=%q partition=%d offset=%d", topic, partition, offset)
+				continue
+			}
+
+			for _, msg := range fetched {
+				if !pending[msg.Offset] {
+					continue
+				}
+
+				delete(pending, msg.Offset)
+
+				select {
+				case <-ctx.Done():
+					return
+				case messages <- msg:
+
+				}
+			}
+		}
+	}()
+
+	return messages, nil
 }
 
 func parseFromOffset(offset string, partitions []int32) (int64, error) {
@@ -283,6 +313,77 @@ func parseUntilOffset(offset string, client sarama.Client, topic string, partiti
 		partition := partitions[0]
 		return map[int32]int64{partition: maxOffset}, nil
 	}
+}
+
+func (cmd *command) consumeRange(ctx context.Context, client sarama.Client, topic string, partitionIDs []int32, fromOffset, untilOffset string) (<-chan *sarama.ConsumerMessage, error) {
+	startOffset, err := parseFromOffset(fromOffset, partitionIDs)
+	if err != nil {
+		return nil, fmt.Errorf("invalid --from value")
+	}
+
+	maxOffsets, err := parseUntilOffset(untilOffset, client, topic, partitionIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	var partitions []pkg.PartitionOffset
+	for _, partition := range partitionIDs {
+		if maxOffsets[partition] == -1 {
+			// We want to read up until the most recent message but this partition
+			// has never received any. Therefore, we don't need to process anything.
+			cmd.logger.Printf("Ignoring topic %q partition %d because it contains no messages", topic, partition)
+			continue
+		}
+
+		if untilOffset != "" {
+			maxOffset := maxOffsets[partition]
+			cmd.logger.Printf("Consuming topic %q partition %d starting at offset %q until offset %d", topic, partition, fromOffset, maxOffset)
+		} else {
+			cmd.logger.Printf("Consuming topic %q partition %d starting at offset %q indefinitely", topic, partition, fromOffset)
+		}
+
+		partitions = append(partitions, pkg.PartitionOffset{
+			Partition: partition,
+			Offset:    startOffset,
+		})
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(len(partitions))
+
+	messages := make(chan *sarama.ConsumerMessage, len(partitions))
+	consumePartition := func(con sarama.PartitionConsumer) {
+		defer wg.Done()
+
+		for msg := range con.Messages() {
+			messages <- msg
+
+			maxOffset, ok := maxOffsets[msg.Partition]
+			if ok && msg.Offset == maxOffset {
+				con.Close()
+				cmd.debug.Printf("Partition consumer %d has reached its maximum offset", msg.Partition)
+				return
+			}
+		}
+	}
+
+	go func() {
+		wg.Wait()
+		close(messages)
+	}()
+
+	con, err := sarama.NewConsumerFromClient(client)
+	if err != nil {
+		return nil, err
+	}
+
+	consumer := pkg.NewConsumer(con)
+	err = consumer.ProcessPartitions(ctx, topic, partitions, consumePartition)
+	if err != nil {
+		return nil, err
+	}
+
+	return messages, nil
 }
 
 func (cmd *command) connectDestination(destContext string) (sarama.SyncProducer, error) {
