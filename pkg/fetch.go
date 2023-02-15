@@ -67,12 +67,12 @@ func FetchMessages(broker *sarama.Broker, topic string, partition int32, offset 
 		if records.MsgSet != nil {
 			// For our current Kafka version messages are returned in this
 			// field but maybe newer versions may use RecordBatch.
-			messages = append(messages, parseMessages(records.MsgSet)...)
+			messages = append(messages, parseMessages(topic, partition, records.MsgSet)...)
 			isPartial = isPartial || records.MsgSet.PartialTrailingMessage
 		}
 
 		if records.RecordBatch != nil {
-			messages = append(messages, parseRecords(records.RecordBatch)...)
+			messages = append(messages, parseRecords(topic, partition, records.RecordBatch)...)
 			isPartial = isPartial || records.RecordBatch.PartialTrailingRecord
 		}
 	}
@@ -127,7 +127,7 @@ func fetchOffsetRequest(topic string, partition int32, offset int64, fetchSizeBy
 	return req
 }
 
-func parseMessages(msgSet *sarama.MessageSet) []*sarama.ConsumerMessage {
+func parseMessages(topic string, partition int32, msgSet *sarama.MessageSet) []*sarama.ConsumerMessage {
 	var messages []*sarama.ConsumerMessage
 	for _, msgBlock := range msgSet.Messages {
 		for _, msg := range msgBlock.Messages() {
@@ -138,6 +138,8 @@ func parseMessages(msgSet *sarama.MessageSet) []*sarama.ConsumerMessage {
 			}
 
 			messages = append(messages, &sarama.ConsumerMessage{
+				Topic:          topic,
+				Partition:      partition,
 				Key:            msg.Msg.Key,
 				Value:          msg.Msg.Value,
 				Offset:         offset,
@@ -150,10 +152,12 @@ func parseMessages(msgSet *sarama.MessageSet) []*sarama.ConsumerMessage {
 	return messages
 }
 
-func parseRecords(batch *sarama.RecordBatch) []*sarama.ConsumerMessage {
+func parseRecords(topic string, partition int32, batch *sarama.RecordBatch) []*sarama.ConsumerMessage {
 	var messages []*sarama.ConsumerMessage
 	for _, rec := range batch.Records {
 		messages = append(messages, &sarama.ConsumerMessage{
+			Topic:     topic,
+			Partition: partition,
 			Key:       rec.Key,
 			Value:     rec.Value,
 			Offset:    batch.FirstOffset + rec.OffsetDelta,
