@@ -16,9 +16,10 @@ import (
 
 func (cmd *command) ConsumeCmd() *cobra.Command {
 	produceCmd := &cobra.Command{
-		Use:   "consume <topic>",
-		Args:  cobra.ExactArgs(1),
-		Short: "Consume messages from a Kafka topic and print them to stdout",
+		Use:     "consume <topic>",
+		GroupID: "consumer-producer",
+		Args:    cobra.ExactArgs(1),
+		Short:   "Consume messages from a Kafka topic and print them to stdout",
 		Long: `Consume messages from a Kafka topic and print them to stdout.
 
 By default, the --output flag is set to "raw" which means that the command will

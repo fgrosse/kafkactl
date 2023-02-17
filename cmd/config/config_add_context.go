@@ -9,7 +9,7 @@ func (cmd *command) ConfigAddContextCmd() *cobra.Command {
 	addContextCmd := &cobra.Command{
 		Use:   "add <name>",
 		Args:  cobra.ExactArgs(1),
-		Short: "Add a new Kafka cluster configuration context to your kafkactl config file",
+		Short: "Add a new configuration context to your kafkactl config file",
 		RunE: func(_ *cobra.Command, args []string) error {
 			name := args[0]
 			brokers := viper.GetStringSlice("broker")
@@ -17,7 +17,7 @@ func (cmd *command) ConfigAddContextCmd() *cobra.Command {
 		},
 	}
 
-	addContextCmd.Flags().StringSliceP("broker", "b", nil, "Kafka Broker address")
+	addContextCmd.Flags().StringSliceP("broker", "b", nil, "Kafka Broker address (can be passed multiple times)")
 	addContextCmd.MarkFlagRequired("broker")
 
 	return addContextCmd

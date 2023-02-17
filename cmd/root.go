@@ -38,12 +38,12 @@ func New() *Kafkactl {
 	debug := log.New(io.Discard, "", 0)
 
 	cmd := &Kafkactl{
-		conf:   pkg.DefaultConfiguration(),
+		conf:   pkg.NewConfiguration(),
 		logger: logger,
 		debug:  debug,
 		Command: &cobra.Command{
-			Use:   "kafkactl",
-			Short: "kafkactl is a command line tool to interact with an Apache Kafka cluster",
+			Use:  "kafkactl",
+			Long: `kafkactl is a command line tool to interact with an Apache Kafka cluster.`,
 		},
 	}
 	cmd.SilenceErrors = true
@@ -65,6 +65,12 @@ func New() *Kafkactl {
 	cmd.AddCommand(replay.Command(cmd, logger, debug))
 
 	cmd.PersistentPreRunE = cmd.initConfig
+
+	cmd.AddGroup(&cobra.Group{ID: "config", Title: "Managing configuration"})
+	cmd.AddGroup(&cobra.Group{ID: "resources", Title: "Resource operations"})
+	cmd.AddGroup(&cobra.Group{ID: "consumer-producer", Title: "Consuming & Producing messages"})
+
+	cmd.SetHelpCommand(&cobra.Command{Hidden: true})
 
 	return cmd
 }

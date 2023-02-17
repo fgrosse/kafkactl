@@ -25,8 +25,10 @@ func Command(base BaseCommand, logger *log.Logger, debug *log.Logger) *cobra.Com
 		logger:      logger,
 		debug:       debug,
 		Command: &cobra.Command{
-			Use:   "config",
-			Short: "Manage the kafkactl configuration",
+			Use:     "config",
+			GroupID: "config",
+			Short:   "Manage the kafkactl configuration",
+			Long:    `Manage the kafkactl configuration and cluster configuration contexts.`,
 		},
 	}
 

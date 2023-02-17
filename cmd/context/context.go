@@ -19,9 +19,10 @@ type Context struct {
 
 func (cmd *command) ContextCmd() *cobra.Command {
 	contextCmd := &cobra.Command{
-		Use:   "context <name>",
-		Args:  cobra.MaximumNArgs(1),
-		Short: "Switch between different configuration contexts",
+		Use:     "context <name>",
+		GroupID: "config",
+		Args:    cobra.MaximumNArgs(1),
+		Short:   "Switch between different configuration contexts",
 		Long: `Switch between different configurations contexts (e.g. prod, staging, local).
 
 The kafkactl context feature is conceptionally similar to how kubectl manages cluster configuration.

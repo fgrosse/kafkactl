@@ -28,8 +28,9 @@ func Command(base BaseCommand, logger, debug *log.Logger) *cobra.Command {
 		logger:      logger,
 		debug:       debug,
 		Command: &cobra.Command{
-			Use:   "get",
-			Short: "Display resources in the Kafka cluster",
+			Use:     "get",
+			GroupID: "resources",
+			Short:   "Display resources in the Kafka cluster",
 			Example: `
   # List all topics in a Kafka cluster
   kafkactl get topics

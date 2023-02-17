@@ -14,9 +14,10 @@ import (
 
 func (cmd *command) ProduceCmd() *cobra.Command {
 	produceCmd := &cobra.Command{
-		Use:   "produce <topic>",
-		Short: "Read messages from stdin and write them to a Kafka topic",
-		Args:  cobra.ExactArgs(1),
+		Use:     "produce <topic>",
+		GroupID: "consumer-producer",
+		Short:   "Read messages from stdin and write them to a Kafka topic",
+		Args:    cobra.ExactArgs(1),
 		Example: `
   # Write each line entered into your terminal as new message to the Kafka topic "example-topic"
   kafkactl produce example-topic

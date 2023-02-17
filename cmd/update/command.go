@@ -26,8 +26,9 @@ func Command(base BaseCommand, logger, debug *log.Logger) *cobra.Command {
 		logger:      logger,
 		debug:       debug,
 		Command: &cobra.Command{
-			Use:   "update",
-			Short: "Update resources in the Kafka cluster",
+			Use:     "update",
+			GroupID: "resources",
+			Short:   "Update resources in the Kafka cluster",
 		},
 	}
 

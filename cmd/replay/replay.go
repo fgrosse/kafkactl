@@ -22,9 +22,10 @@ const defaultFetchSize int32 = 1024 * 1024 // 1MB
 
 func (cmd *command) ReplayCmd() *cobra.Command {
 	replayCmd := &cobra.Command{
-		Use:   "replay",
-		Args:  cobra.NoArgs,
-		Short: "Read messages from a Kafka topic and append them to the end of a topic",
+		Use:     "replay",
+		GroupID: "consumer-producer",
+		Args:    cobra.NoArgs,
+		Short:   "Read messages from a Kafka topic and append them to the end of a topic",
 		Long: `Read messages from a Kafka topic and append them to the end of a topic.
 
 The replay command can be used to take an existing message in a Kafka topic and append
