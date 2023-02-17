@@ -13,11 +13,11 @@ import (
 type Configuration struct {
 	APIVersion      string `yaml:"api_version"`
 	CurrentContext  string `yaml:"current_context"`
-	PreviousContext string `yaml:"previous_context"`
+	PreviousContext string `yaml:"previous_context,omitempty"`
 
 	Contexts []ContextConfiguration   `yaml:"contexts"`
-	Topics   []*TopicConfig           `yaml:"topics"`
-	Proto    GlobalProtoDecoderConfig `yaml:"proto"`
+	Topics   []*TopicConfig           `yaml:"topics,omitempty"`
+	Proto    GlobalProtoDecoderConfig `yaml:"proto,omitempty"`
 }
 
 type ContextConfiguration struct {
@@ -40,21 +40,11 @@ type TopicProtoConfig struct {
 }
 
 type GlobalProtoDecoderConfig struct {
-	Includes []string `yaml:"includes"`
+	Includes []string `yaml:"includes,omitempty"`
 }
 
 func NewConfiguration() *Configuration {
 	return &Configuration{APIVersion: "v1"}
-}
-
-func DefaultConfiguration() *Configuration {
-	conf := NewConfiguration()
-	err := conf.AddContext("default", "localhost:9092")
-	if err != nil {
-		panic(err) // cannot happen unless there is a bug in kafkactl
-	}
-
-	return conf
 }
 
 func LoadConfiguration(r io.Reader) (*Configuration, error) {
