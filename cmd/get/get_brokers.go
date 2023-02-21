@@ -1,6 +1,7 @@
 package get
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/fgrosse/cli"
@@ -10,9 +11,10 @@ import (
 
 // Broker contains information displayed by "kafkactl get brokers".
 type Broker struct {
-	ID   int32
-	Addr string
-	Rack string `json:",omitempty"`
+	ID      int32  `table:"ID" json:"id" yaml:"id"`
+	Address string `table:"ADDRESS" json:"address" yaml:"address"`
+	Role    string `table:"ROLE" json:"role" yaml:"role,omitempty"`
+	Rack    string `table:"-" json:"rack,omitempty" yaml:"rack,omitempty"`
 }
 
 func (cmd *command) GetBrokersCmd() *cobra.Command {
@@ -36,12 +38,24 @@ func (cmd *command) getBrokers(encoding string) error {
 
 	defer client.Close()
 
+	controller, err := client.Controller()
+	if err != nil {
+		return fmt.Errorf("failed to get cluster controller: %w", err)
+	}
+
 	var brokers []Broker
 	for _, b := range client.Brokers() {
+		isController := b.ID() == controller.ID()
+		var role string
+		if isController {
+			role = "controller"
+		}
+
 		brokers = append(brokers, Broker{
-			ID:   b.ID(),
-			Addr: b.Addr(),
-			Rack: b.Rack(),
+			ID:      b.ID(),
+			Address: b.Addr(),
+			Rack:    b.Rack(),
+			Role:    role,
 		})
 	}
 
