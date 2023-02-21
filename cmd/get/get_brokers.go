@@ -11,10 +11,10 @@ import (
 
 // Broker contains information displayed by "kafkactl get brokers".
 type Broker struct {
-	ID      int32  `table:"ID" json:"id" yaml:"id"`
-	Address string `table:"ADDRESS" json:"address" yaml:"address"`
-	Role    string `table:"ROLE" json:"role" yaml:"role,omitempty"`
-	Rack    string `table:"-" json:"rack,omitempty" yaml:"rack,omitempty"`
+	ID      int32  `table:"ID"`
+	Address string `table:"ADDRESS"`
+	Role    string `table:"ROLE" json:",omitempty" yaml:",omitempty"`
+	Rack    string `table:"-" json:",omitempty" yaml:",omitempty"`
 }
 
 func (cmd *command) GetBrokersCmd() *cobra.Command {

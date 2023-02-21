@@ -9,13 +9,13 @@ import (
 )
 
 type Message struct {
-	Topic     string              `json:"topic"`
-	Partition int32               `json:"partition"`
-	Offset    int64               `json:"offset"`
-	Headers   map[string][]string `json:"headers"`
-	Timestamp time.Time           `json:"ts"`
-	Key       string              `json:"key"`
-	Value     any                 `json:"value"`
+	Topic     string
+	Partition int32
+	Offset    int64
+	Headers   map[string][]string
+	Timestamp time.Time
+	Key       string
+	Value     any
 }
 
 type Decoder interface {

@@ -14,7 +14,7 @@ import (
 
 // ConsumerGroup contains information displayed by "kafkactl get consumer".
 type ConsumerGroup struct {
-	GroupID         string
+	GroupID         string        `table:"GROUP_ID"`
 	Protocol        string        `table:"-"`
 	ProtocolType    string        `table:"-"`
 	State           string        `table:"-"`
@@ -22,8 +22,8 @@ type ConsumerGroup struct {
 	CoordinatorAddr string        `table:"-"`
 	Members         []GroupMember `table:"-"`
 	Offsets         []GroupOffset `table:"-"`
-	Clients         string        `json:"-" yaml:"-" table:"CLIENTS"`
-	OffsetsSummary  string        `json:"-" yaml:"-" table:"OFFSETS"`
+	Clients         string        `table:"CLIENTS" json:"-" yaml:"-" table:"CLIENTS"`
+	OffsetsSummary  string        `table:"OFFSETS" json:"-" yaml:"-"`
 }
 
 // GroupMember contains information displayed by "kafkactl get consumer".

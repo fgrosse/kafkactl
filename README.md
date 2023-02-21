@@ -19,7 +19,6 @@ or another cluster.
 
 `kafkactl` is intended to be used as CLI tool on your local machine. It is both
 useful in day to day operations on the shell as well in automation and scripting.
-
 The tool is split into multiple commands, each with its own help output. You can
 see each commands usage by setting the `--help` flag.
 
