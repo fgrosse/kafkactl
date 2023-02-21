@@ -288,6 +288,11 @@ func shortDuration(d time.Duration) string {
 		return fmt.Sprintf("%d days", int(hours/24))
 	}
 
+	// if we have less than 24h and a round number of hours then output simpler format
+	if hours <= 24 && minutes == 0 {
+		return fmt.Sprintf("%d hours", int(hours))
+	}
+
 	// if we have less than 1h, display minutes only
 	if int(hours) == 0 {
 		return fmt.Sprintf("%dm", int(minutes))
