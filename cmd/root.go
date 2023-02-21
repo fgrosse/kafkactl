@@ -80,7 +80,7 @@ func (cmd *Kafkactl) initConfig(cc *cobra.Command, args []string) error {
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
 	if viper.GetBool("verbose") {
-		sarama.Logger = log.New(os.Stdout, "[SARAMA] ", 0)
+		sarama.Logger = log.New(os.Stderr, "[SARAMA] ", 0)
 		cmd.debug.SetOutput(os.Stderr)
 		cmd.debug.SetPrefix("[DEBUG] ")
 	}

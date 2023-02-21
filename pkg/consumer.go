@@ -74,8 +74,8 @@ func (c *Consumer) ConsumePartitions(ctx context.Context, topic string, partitio
 		close(messages)
 	}()
 
-	c.ProcessPartitions(ctx, topic, partitions, consumePartition)
-	return messages, nil
+	err := c.ProcessPartitions(ctx, topic, partitions, consumePartition)
+	return messages, err
 }
 
 func (c *Consumer) ProcessPartitions(ctx context.Context, topic string, partitions []PartitionOffset, process func(sarama.PartitionConsumer)) error {

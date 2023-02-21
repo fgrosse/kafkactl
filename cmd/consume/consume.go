@@ -45,49 +45,66 @@ messages by sending SIGINT, SIGQUIT or SIGTERM to the process (e.g. by pressing 
     # Join the "test" consumer group and print all messages that are assigned to this member
     kafkactl consume example-topic --group=test
 `,
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(cc *cobra.Command, args []string) error {
 			ctx := cli.Context()
 			topic := args[0]
 			partitions := viper.GetIntSlice("partition")
-			offset := viper.GetString("offset")
+			offsetStr := viper.GetString("offset")
+			groupID := viper.GetString("group")
 			outputEncoding := viper.GetString("output")
-			return cmd.consume(ctx, topic, partitions, offset, outputEncoding)
+
+			if groupID != "" && cc.Flag("offset").Changed {
+				return fmt.Errorf("cannot use --group and --offset together: the consumer group will determine the offset automatically")
+			}
+			if groupID != "" && cc.Flag("partition").Changed {
+				return fmt.Errorf("cannot use --group and --partition together: the consumer group will determine the partition automatically")
+			}
+
+			var offset int64
+			switch offsetStr {
+			case "oldest", "first":
+				offset = sarama.OffsetOldest
+			case "newest", "last":
+				offset = sarama.OffsetNewest
+			default:
+				n, err := strconv.Atoi(offsetStr)
+				if err != nil {
+					return fmt.Errorf("failed to parse --offset as integer: %w", err)
+				}
+				offset = int64(n)
+			}
+
+			return cmd.consume(ctx, topic, partitions, offset, groupID, outputEncoding)
 		},
 	}
 
 	flags := produceCmd.Flags()
 	flags.IntSlice("partition", nil, "Kafka topic partition. Can be passed multiple times. By default all partitions are consumed")
 	flags.String("offset", "newest", `either "oldest" or "newest". Can be an integer when consuming only a single partition`)
+	flags.String("group", "", `join a consumer group. Cannot be used together with partition or offset fag`)
 	flags.StringP("output", "o", "raw", "output format. One of raw|json. See --help output for more information")
-	// TODO: support joining a consumer group
 
 	return produceCmd
 }
 
-func (cmd *command) consume(ctx context.Context, topic string, partitions []int, offsetStr, outputEncoding string) error {
-	var offset int64
-	switch offsetStr {
-	case "oldest", "first":
-		offset = sarama.OffsetOldest
-	case "newest", "last":
-		offset = sarama.OffsetNewest
-	default:
-		n, err := strconv.Atoi(offsetStr)
-		if err != nil {
-			return fmt.Errorf("failed to parse --offset as integer: %w", err)
-		}
-		offset = int64(n)
-	}
-
+func (cmd *command) consume(ctx context.Context, topic string, partitions []int, offset int64, groupID, outputEncoding string) error {
 	conf := cmd.Configuration()
 	dec, err := pkg.NewTopicDecoder(topic, *conf)
 	if err != nil {
 		return err
 	}
 
-	messages, err := cmd.simpleConsumer(ctx, topic, partitions, offset)
-	if err != nil {
-		return err
+	var messages <-chan *sarama.ConsumerMessage
+	if groupID != "" {
+		messages, err = cmd.joinConsumerGroup(ctx, topic, groupID)
+		if err != nil {
+			return err
+		}
+	} else {
+		messages, err = cmd.simpleConsumer(ctx, topic, partitions, offset)
+		if err != nil {
+			return err
+		}
 	}
 
 	for msg := range messages {
@@ -112,6 +129,22 @@ func (cmd *command) consume(ctx context.Context, topic string, partitions []int,
 	return nil
 }
 
+func (cmd *command) joinConsumerGroup(ctx context.Context, topic, groupID string) (<-chan *sarama.ConsumerMessage, error) {
+	saramaConf := cmd.SaramaConfig()
+	saramaConf.Consumer.Return.Errors = false // TODO
+
+	client, err := cmd.ConnectClient(saramaConf)
+	if err != nil {
+		return nil, err
+	}
+
+	cmd.logger.Printf("Consuming messages from topic %q via consumer group %q",
+		topic, groupID,
+	)
+
+	return pkg.JoinConsumerGroup(ctx, client, topic, groupID, cmd.logger)
+}
+
 func (cmd *command) simpleConsumer(ctx context.Context, topic string, partitions []int, offset int64) (<-chan *sarama.ConsumerMessage, error) {
 	saramaConf := cmd.SaramaConfig()
 	saramaConf.Consumer.Return.Errors = false // TODO
@@ -126,6 +159,9 @@ func (cmd *command) simpleConsumer(ctx context.Context, topic string, partitions
 	}
 
 	con := pkg.NewConsumer(c)
+	cmd.logger.Printf("Consuming messages from %s of topic %q starting at %s",
+		humanFriendlyPartitions(partitions), topic, humanFriendlyOffset(offset),
+	)
 
 	switch len(partitions) {
 	case 0:
@@ -141,5 +177,38 @@ func (cmd *command) simpleConsumer(ctx context.Context, topic string, partitions
 			}
 		}
 		return con.ConsumePartitions(ctx, topic, pp)
+	}
+}
+
+func humanFriendlyPartitions(partitions []int) string {
+	switch len(partitions) {
+	case 0:
+		return "all partitions"
+	case 1:
+		return fmt.Sprintf("partition %d", partitions[0])
+	default:
+		descr := "partitions"
+		for i, p := range partitions {
+			switch i {
+			case 0:
+				descr += " " + fmt.Sprint(p)
+			case len(partitions) - 1:
+				descr += " & " + fmt.Sprint(p)
+			default:
+				descr += ", " + fmt.Sprint(p)
+			}
+		}
+		return descr
+	}
+}
+
+func humanFriendlyOffset(offset int64) string {
+	switch offset {
+	case sarama.OffsetNewest:
+		return "newest offset"
+	case sarama.OffsetOldest:
+		return "oldest offset"
+	default:
+		return fmt.Sprint("offset", offset)
 	}
 }
