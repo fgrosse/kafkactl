@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/Shopify/sarama"
@@ -57,7 +58,6 @@ func (cmd *command) createTopic(
 	retention time.Duration,
 ) error {
 	req := &sarama.CreateTopicsRequest{
-		Version:      0, // 0 represents v0.10.1
 		TopicDetails: make(map[string]*sarama.TopicDetail),
 		Timeout:      timeout,
 	}
@@ -72,10 +72,6 @@ func (cmd *command) createTopic(
 
 	var configs map[string]*string
 	if retention > 0 {
-		if retention < 30*time.Minute || retention > 31*24*time.Hour {
-			return errors.New("retention must be between 30 minutes and 31 days")
-		}
-
 		retentionMillis := fmt.Sprint(int64(retention.Seconds()) * 1000)
 		configs = map[string]*string{"retention.ms": &retentionMillis}
 	}
@@ -92,9 +88,7 @@ func (cmd *command) createTopic(
 		req.TopicDetails[topicName] = &sarama.TopicDetail{
 			NumPartitions:     partitions,
 			ReplicationFactor: replicas,
-			// TODO: Replication Assignment is not implemented yet.
-			// TODO: Specific custom configuration for topic is not implemented yet
-			ConfigEntries: configs,
+			ConfigEntries:     configs,
 		}
 	}
 
@@ -126,6 +120,11 @@ func (cmd *command) createTopic(
 		}
 	}
 
-	cmd.logger.Printf("Topic(s) created successfully: %v", names)
+	if len(names) == 1 {
+		cmd.logger.Printf("Topic created successfully: %s", names[0])
+	} else {
+		cmd.logger.Printf("Topics created successfully: %s", strings.Join(names, ", "))
+	}
+
 	return nil
 }
