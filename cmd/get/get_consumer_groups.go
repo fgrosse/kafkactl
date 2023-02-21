@@ -46,10 +46,20 @@ type GroupOffset struct {
 
 func (cmd *command) GetConsumerGroupsCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "consumers [name]",
+		Use:     "consumers [name]...",
 		Args:    cobra.MaximumNArgs(1),
 		Aliases: []string{"consumer", "consumer-groups", "consumer-group"},
 		Short:   "List all consumer groups or display information only for a specific consumer group",
+		Example: `
+  # Show a table of all consumer groups
+  kafkactl get consumers
+
+  # Show only the consumers named "example1" and example"3"
+  kafkactl get consumers example1 example3
+
+  # Show all information about a specific consumer group as JSON
+  kafkactl get consumer "example-consumer" -o json
+`,
 		RunE: func(_ *cobra.Command, args []string) error {
 			var name string
 			if len(args) > 0 {
@@ -62,24 +72,40 @@ func (cmd *command) GetConsumerGroupsCmd() *cobra.Command {
 }
 
 func (cmd *command) getConsumerGroups(name, encoding string) error {
+	var groups []string
 	if name == "" {
-		return cmd.listGroups(encoding)
+		var err error
+		groups, err = cmd.listGroups()
+		if err != nil {
+			return fmt.Errorf("failed to list all consumer groups: %w", err)
+		}
+	} else {
+		groups = []string{name}
 	}
 
-	return cmd.getConsumerGroup(name, encoding)
+	var result []ConsumerGroup
+	for _, group := range groups {
+		g, err := cmd.getConsumerGroup(group)
+		if err != nil {
+			return err
+		}
+		result = append(result, g)
+	}
+
+	return cli.Print(encoding, result)
 }
 
-func (cmd *command) listGroups(encoding string) error {
+func (cmd *command) listGroups() ([]string, error) {
 	admin, err := cmd.ConnectAdmin()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	defer admin.Close()
 
 	resp, err := admin.ListConsumerGroups()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var groups []string
@@ -88,56 +114,56 @@ func (cmd *command) listGroups(encoding string) error {
 	}
 
 	sort.Strings(groups)
-
-	return cli.Print(encoding, groups)
+	return groups, nil
 }
 
-func (cmd *command) getConsumerGroup(groupID, encoding string) error {
+func (cmd *command) getConsumerGroup(groupID string) (ConsumerGroup, error) {
+	var description ConsumerGroup
+
 	conf := cmd.SaramaConfig()
 	client, err := cmd.ConnectClient(conf)
 	if err != nil {
-		return err
+		return description, err
 	}
 
 	defer client.Close()
 
 	coordinator, err := client.Coordinator(groupID)
 	if err != nil {
-		return fmt.Errorf("failed to determine consumer group coordinator: %w", err)
+		return description, fmt.Errorf("failed to determine consumer group coordinator: %w", err)
 	}
+
+	description.CoordinatorID = coordinator.ID()
+	description.CoordinatorAddr = coordinator.Addr()
 
 	cmd.debug.Printf("Retrieving consumer meta data for group %q", groupID)
 	metadataReq := &sarama.ConsumerMetadataRequest{ConsumerGroup: groupID}
 	metadataResp, err := coordinator.GetConsumerMetadata(metadataReq)
 	if err != nil {
-		return fmt.Errorf("failed to get consumer meta data: %w", err)
+		return description, fmt.Errorf("failed to get consumer meta data: %w", err)
 	}
 	if metadataResp.Err != sarama.ErrNoError {
-		return metadataResp.Err
+		return description, metadataResp.Err
 	}
 
 	cmd.debug.Printf("Fetching group description for %q", groupID)
 	describeReq := &sarama.DescribeGroupsRequest{Groups: []string{groupID}}
 	describeResp, err := coordinator.DescribeGroups(describeReq)
 	if err != nil {
-		return fmt.Errorf("failed to describe groups: %w", err)
+		return description, fmt.Errorf("failed to get group description: %w", err)
 	}
 	if len(describeResp.Groups) != 1 {
-		return fmt.Errorf("unexpected number of groups in Kafka response: want 1 but got %d", len(describeResp.Groups))
+		return description, fmt.Errorf("unexpected number of groups in Kafka response: want 1 but got %d", len(describeResp.Groups))
 	}
 	g := describeResp.Groups[0]
 	if g.Err != sarama.ErrNoError {
-		return fmt.Errorf("group description error: %w", g.Err)
+		return description, fmt.Errorf("group description error: %w", g.Err)
 	}
 
-	description := ConsumerGroup{
-		CoordinatorID:   coordinator.ID(),
-		CoordinatorAddr: coordinator.Addr(),
-		GroupID:         g.GroupId,
-		Protocol:        g.ProtocolType,
-		ProtocolType:    g.ProtocolType,
-		State:           g.State,
-	}
+	description.GroupID = g.GroupId
+	description.Protocol = g.ProtocolType
+	description.ProtocolType = g.ProtocolType
+	description.State = g.State
 
 	for id, m := range g.Members {
 		mem := GroupMember{
@@ -148,7 +174,7 @@ func (cmd *command) getConsumerGroup(groupID, encoding string) error {
 
 		meta, err := m.GetMemberMetadata()
 		if err != nil {
-			return fmt.Errorf("invalid member meta data in client %q: %w", id, err)
+			return description, fmt.Errorf("invalid member meta data in client %q: %w", id, err)
 		}
 
 		for _, t := range meta.Topics {
@@ -172,7 +198,7 @@ func (cmd *command) getConsumerGroup(groupID, encoding string) error {
 		cmd.debug.Println("Fetching all topics and partitions")
 		topics, err = client.Topics()
 		if err != nil {
-			return fmt.Errorf("failed to list topics: %w", err)
+			return description, fmt.Errorf("failed to list topics: %w", err)
 		}
 	}
 
@@ -180,7 +206,7 @@ func (cmd *command) getConsumerGroup(groupID, encoding string) error {
 	for _, topic := range topics {
 		topicPartitions[topic], err = client.Partitions(topic)
 		if err != nil {
-			return fmt.Errorf("failed to get partitions of topic %q: %w", topic, err)
+			return description, fmt.Errorf("failed to get partitions of topic %q: %w", topic, err)
 		}
 	}
 
@@ -191,7 +217,7 @@ func (cmd *command) getConsumerGroup(groupID, encoding string) error {
 		for _, partition := range partitions {
 			topicOffsets[partition], err = client.GetOffset(topic, partition, sarama.OffsetNewest)
 			if err != nil {
-				return fmt.Errorf("dailed to fetch offset for partition %d of topic %q: %w", partition, topic, err)
+				return description, fmt.Errorf("dailed to fetch offset for partition %d of topic %q: %w", partition, topic, err)
 			}
 		}
 		partitionOffsets[topic] = topicOffsets
@@ -207,7 +233,7 @@ func (cmd *command) getConsumerGroup(groupID, encoding string) error {
 
 	groupOffsetResp, err := coordinator.FetchOffset(groupOffsetReq)
 	if err != nil {
-		return fmt.Errorf("failed to fetch consumer group offsets: %w", err)
+		return description, fmt.Errorf("failed to fetch consumer group offsets: %w", err)
 	}
 
 	description.Offsets = []GroupOffset{}
@@ -215,11 +241,11 @@ func (cmd *command) getConsumerGroup(groupID, encoding string) error {
 		for partition, m := range block {
 			topicOffsets, ok := partitionOffsets[topic]
 			if !ok {
-				return fmt.Errorf("offsets for topic %q have not been returned from c.GetOffset", topic)
+				return description, fmt.Errorf("offsets for topic %q have not been returned from c.GetOffset", topic)
 			}
 			partitionOffset, ok := topicOffsets[partition]
 			if !ok {
-				return fmt.Errorf("oartition offset for partition %d of topic %q has not been returned from c.GetOffset", partition, topic)
+				return description, fmt.Errorf("oartition offset for partition %d of topic %q has not been returned from c.GetOffset", partition, topic)
 			}
 
 			if m.Offset == -1 {
@@ -238,7 +264,7 @@ func (cmd *command) getConsumerGroup(groupID, encoding string) error {
 	}
 
 	for _, o := range description.Offsets {
-		description.OffsetsSummary += fmt.Sprintf("%s:%d:%d, ", o.Topic, o.LastCommittedOffset, o.HighWaterMark)
+		description.OffsetsSummary += fmt.Sprintf("%s:%d=%d, ", o.Topic, o.Partition, o.LastCommittedOffset)
 	}
 
 	description.OffsetsSummary = strings.Trim(description.OffsetsSummary, ", ")
@@ -251,5 +277,5 @@ func (cmd *command) getConsumerGroup(groupID, encoding string) error {
 		return description.Offsets[i].Topic < description.Offsets[j].Topic
 	})
 
-	return cli.Print(encoding, description)
+	return description, nil
 }
