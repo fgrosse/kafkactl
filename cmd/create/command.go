@@ -28,9 +28,6 @@ func Command(base BaseCommand, logger, debug *log.Logger) *cobra.Command {
 			Use:     "create",
 			GroupID: "resources",
 			Short:   "Create resources in the Kafka cluster",
-			Example: `
-  # Create topics 
-  kafkactl create topic --partitions=1 --replicas=1 --retention=7d [TOPIC_NAME]`,
 		},
 	}
 

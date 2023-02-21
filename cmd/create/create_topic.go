@@ -20,7 +20,7 @@ func (cmd *command) CreateTopicCmd() *cobra.Command {
 		Aliases: []string{"topics"},
 		Args:    cobra.MinimumNArgs(1),
 		Short:   "Create one or many topics",
-		Long: `Create one or many topics
+		Long: `Create one or many topics.
 
 Create topics by passing at least one topic name as arguments. You can control
 the amount of partitions, the replication factor and other settings using flags.
@@ -28,6 +28,15 @@ the amount of partitions, the replication factor and other settings using flags.
 You can pass multiple topic names to create multiple topics at the same time.
 All of them will have the same partition and replication settings from the flags.
 `,
+		Example: `
+  # Create a topic "foobar" with a single partition, no additional replicas and cluster defaults
+  kafkactl create topic "foobar"
+
+  # Create topic "foobar" with 2 partitions, a replication factor of 3 and message retention of 7 days
+  kafkactl create topic "foobar" --partitions=2 --replicas=3 --retention=7d
+
+  # Try to create a topic but do not return an error (non zero status code) if it already exists
+  kafkactl create topic "foobar" --if-not-exists`,
 		RunE: func(_ *cobra.Command, args []string) error {
 			names := args
 			partitions := viper.GetInt32("partitions")
@@ -42,7 +51,7 @@ All of them will have the same partition and replication settings from the flags
 	flags := createTopicCmd.Flags()
 	flags.Int32("partitions", 1, "Number of partitions")
 	flags.Int16("replicas", 1, "Replication factor")
-	flags.Duration("timeout", 30*time.Second, "Timeout for Kafka requests")
+	flags.Duration("timeout", 10*time.Second, "Timeout for Kafka requests")
 	flags.Bool("if-not-exists", false, "Do not fail if the topic already exists")
 	flags.Duration("retention", 0, "Maximum time to retain messages in this topic. Leave empty for cluster default")
 

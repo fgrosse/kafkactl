@@ -58,8 +58,7 @@ func (cmd *command) GetConsumerGroupsCmd() *cobra.Command {
   kafkactl get consumers example1 example3
 
   # Show all information about a specific consumer group as JSON
-  kafkactl get consumer "example-consumer" -o json
-`,
+  kafkactl get consumer "example-consumer" -o json`,
 		RunE: func(_ *cobra.Command, args []string) error {
 			var name string
 			if len(args) > 0 {

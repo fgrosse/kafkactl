@@ -101,14 +101,14 @@ using `kafkactl get`.
 
 All sub commands of `kafkactl get` default to printing information in a human
 friendly way (e.g. as a table). They also have an `--output` flag which allows for
-other output encoding that is more suitable for scripting and often contains more
-information than what fits into the tabular format. 
+other output encoding that is more suitable for scripting (e.g. JSON) and often
+contains more information than what fits into the tabular format. 
 
-## Roadmap
+### Writing to Kafka
 
-- [ ] Self update command
-- [ ] Integration tests with Kafka
-- [ ] Improve shell autocompletion
+You can use `kafkactl` to create and delete topics and update configuration.
+Please refer to the corresponding `kafkactl --help` output for more information
+and examples.
 
 ## Other kafkactls
 
