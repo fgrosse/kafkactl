@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/Shopify/sarama"
 	"github.com/fgrosse/kafkactl/cmd/config"
@@ -195,13 +194,7 @@ func (*Kafkactl) SaramaConfig() *sarama.Config {
 	conf := sarama.NewConfig()
 	conf.Version = sarama.V1_1_0_0
 	conf.ClientID = "kafkactl"
-
-	conf.Net.DialTimeout = 30 * time.Second
-	conf.Net.ReadTimeout = 120 * time.Second
-	conf.Net.WriteTimeout = 125 * time.Second
-	conf.Admin.Timeout = 30 * time.Second
-
-	conf.Metadata.Full = true
+	conf.Metadata.Retry.Max = 0 // fail fast
 
 	return conf
 }
