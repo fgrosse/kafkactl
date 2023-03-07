@@ -19,7 +19,7 @@ You can either install a pre-compiled binary or compile from source.
 
 ### Pre-compiled binaries
 
-Download the pre-compiled binaries from the [releases page](releases) and copy
+Download the pre-compiled binaries from the [releases page][releases] and copy
 them into your `$PATH`.
 
 ### Compiling from source
@@ -134,3 +134,4 @@ and examples.
 [kafka]: https://kafka.apache.org/
 [protobuf]: https://protobuf.dev/
 [go]: https://go.dev/
+[releases]: https://github.com/fgrosse/kafkactl/releases
