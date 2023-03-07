@@ -163,10 +163,9 @@ conduct and on the process for submitting pull requests to this repository.
 
 ## Versioning
 
+We use [SemVer](http://semver.org/) for versioning. 
 All significant (e.g. breaking) changes are documented in the [CHANGELOG.md](CHANGELOG.md).
-
-After the v1.0 release we plan to use [SemVer](http://semver.org/) for versioning.
-For the versions available, see the [releases page][releases].
+A list of all available versions can be found at the [releases page][releases].
 
 ## Authors
 
