@@ -1,5 +1,10 @@
 <h1 align="center">Kafkactl</h1>
 <p align="center">A command line tool to interact with an Apache Kafka cluster.</p>
+<p align="center">
+    <a href="https://github.com/fgrosse/kafkactl/releases"><img src="https://img.shields.io/github/tag/fgrosse/kafkactl.svg?label=version&color=brightgreen"></a>
+    <a href="https://github.com/fgrosse/kafkactl/actions/workflows/test.yml"><img src="https://github.com/fgrosse/kafkactl/actions/workflows/test.yml/badge.svg"></a>
+    <a href="https://github.com/fgrosse/kafkactl/blob/master/LICENSE"><img src="https://img.shields.io/badge/license-BSD--3--Clause-blue.svg"></a>
+</p>
 
 ---
 
