@@ -128,6 +128,17 @@ and examples.
 
 ## Other kafkactls
 
+There are multiple applications that call themselves `kafkactl`. All of them
+have been developed independently but with similar feature sets.
+
+This incarnation of `kafkactl` was created at [Fraugster][fraugster] in September 2017.
+It was a useful tool for many years and we decided to keep it around even after Fraugster
+ceased to exist, mainly because we are very used to it and maybe for sentimental reasons.
+
+Other `kafkactl` implementations come with similar features (e.g. Protobuf support,
+managing configuration with kubectl-like contexts). We list them here, so you can
+pick the tool that serves your use case best:
+
 * https://github.com/deviceinsight/kafkactl
 * https://github.com/jbvmio/kafkactl
 
@@ -135,3 +146,4 @@ and examples.
 [protobuf]: https://protobuf.dev/
 [go]: https://go.dev/
 [releases]: https://github.com/fgrosse/kafkactl/releases
+[fraugster]: https://github.com/fraugster
