@@ -144,8 +144,8 @@ Other `kafkactl` implementations come with similar features (e.g. Protobuf suppo
 managing configuration with kubectl-like contexts). We list them here, so you can
 pick the tool that serves your use case best:
 
-* https://github.com/deviceinsight/kafkactl
-* https://github.com/jbvmio/kafkactl
+* [`deviceinsight/kafkactl`](https://github.com/deviceinsight/kafkactl)
+* [`jbvmio/kafkactl`](https://github.com/jbvmio/kafkactl)
 
 ## Built With
 
