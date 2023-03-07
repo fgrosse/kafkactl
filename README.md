@@ -142,8 +142,48 @@ pick the tool that serves your use case best:
 * https://github.com/deviceinsight/kafkactl
 * https://github.com/jbvmio/kafkactl
 
+## Built With
+
+* [sarama](https://github.com/Shopify/sarama) - a Go library for Apache Kafka
+* [cobra](https://github.com/spf13/cobra) - a library to build powerful CLI applications
+* [viper](https://github.com/spf13/viper) - configuration with fangs
+* [protoreflect](https://github.com/jhump/protoreflect) - reflection for Go Protocol Buffers
+* [testify](https://github.com/stretchr/testify) - A simple unit test library
+* _[and more][built-with]_
+
+## Contributing
+
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of
+conduct and on the process for submitting pull requests to this repository.
+
+## Versioning
+
+All significant (e.g. breaking) changes are documented in the [CHANGELOG.md](CHANGELOG.md).
+
+After the v1.0 release we plan to use [SemVer](http://semver.org/) for versioning.
+For the versions available, see the [releases page][releases].
+
+## Authors
+
+- **Friedrich Große** - *Initial work* - [fgrosse](https://github.com/fgrosse)
+- Various folks at [Fraugster](https://github.com/fraugster)
+  - **Julius Bachnick** - [juliusbachnick](https://github.com/juliusbachnick)
+  - **Andreas Krennmair** - [akrennmair](https://github.com/akrennmair)
+  - **Stefan Warman** - [warmans](https://github.com/warmans)
+  - **Stefan Koshiw** - [panamafrancis](https://github.com/panamafrancis)
+  - **Oleg Prozorov** - [oleg](https://github.com/oleg)
+  - _and more..._
+
+See also the list of [contributors][contributors] who participated in this project.
+
+## License
+
+This project is licensed under the BSD-3-Clause License - see the [LICENSE](LICENSE) file for details.
+
 [kafka]: https://kafka.apache.org/
 [protobuf]: https://protobuf.dev/
 [go]: https://go.dev/
 [releases]: https://github.com/fgrosse/kafkactl/releases
 [fraugster]: https://github.com/fraugster
+[contributors]: https://github.com/fgrosse/kafkactl/contributors
+[built-with]: go.mod
