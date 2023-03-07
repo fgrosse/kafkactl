@@ -11,9 +11,25 @@ that are encoded as [Protocol Buffers][protobuf]. Finally, kafkactl implements m
 advanced behaviour on top of these primitives, e.g. to **replay** messages on the same
 or another cluster.
 
+![](docs/demo.gif)
+
 ## Installation
 
-*TODO*
+You can either install a pre-compiled binary or compile from source.
+
+### Pre-compiled binaries
+
+Download the pre-compiled binaries from the [releases page](releases) and copy
+them into your `$PATH`.
+
+### Compiling from source
+
+If you have [Go][go] installed, you can fetch the latest code and compile an
+executable binary using the following command:
+
+```
+go get github.com/fgrosse/kafkactl
+```
 
 ## Usage
 
@@ -56,7 +72,7 @@ Flags:
 Use "kafkactl [command] --help" for more information about a command.
 ```
 
-### Getting Started
+### Getting started
 
 The first thing you need to do after installing `kafkactl` is to set up a
 *configuration context*. Each context contains all information to connect to a
@@ -88,9 +104,9 @@ ID      ADDRESS      ROLE
 
 $ kafkactl get topics
 NAME    PARTITIONS  REPLICATION  RETENTION
-test-1  1           1            7 days    
-test-2  10          3            12 hours  
-test-3  10          3            2 days  
+test-1  2           1            2 weeks   
+test-2  4           3            7 days    
+test-3  10          3            12 hours 
 ```
 
 Apart from *brokers* and *topics*, you can also query information about the Kafka
@@ -117,3 +133,4 @@ and examples.
 
 [kafka]: https://kafka.apache.org/
 [protobuf]: https://protobuf.dev/
+[go]: https://go.dev/
