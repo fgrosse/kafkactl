@@ -118,7 +118,7 @@ func (cmd *command) fetchTopics(client sarama.Client, admin sarama.ClusterAdmin,
 
 		meta := topicMeta[topicName]
 		if meta == nil {
-			cmd.logger.Printf("WARNING: Did not find meta data for topic %q", topicName)
+			cmd.debug.Printf("WARNING: Did not find meta data for topic %q", topicName)
 			continue
 		}
 
