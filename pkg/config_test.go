@@ -30,7 +30,7 @@ contexts:
       - localhost:9092
 `
 
-	expected := Configuration{
+	expected := &Configuration{
 		APIVersion:      "v1",
 		CurrentContext:  "staging",
 		PreviousContext: "prod",
@@ -64,7 +64,7 @@ bar: baz
 
 	r := strings.NewReader(input)
 	_, err := LoadConfiguration(r)
-	assert.EqualError(t, err, "yaml: unmarshal errors:\n  line 2: field foo not found in type cmd.Configuration\n  line 3: field bar not found in type cmd.Configuration")
+	assert.EqualError(t, err, "yaml: unmarshal errors:\n  line 2: field foo not found in type pkg.Configuration\n  line 3: field bar not found in type pkg.Configuration")
 }
 
 func TestSaveConfiguration(t *testing.T) {
