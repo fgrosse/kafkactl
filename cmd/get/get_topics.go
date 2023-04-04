@@ -169,7 +169,7 @@ func (*command) fetchTopicMetaData(client sarama.Client, topics []string) (map[s
 
 // special meta topic such as "__consumer_offsets"
 func isIgnoredTopic(name string) bool {
-	return strings.HasPrefix(name, "__")
+	return strings.HasPrefix(name, "_")
 }
 
 func (cmd *command) fetchTopicPartitions(client sarama.Client, topicName string, details sarama.TopicDetail, meta *sarama.TopicMetadata) []PartitionMetadata {
