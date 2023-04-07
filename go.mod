@@ -8,6 +8,8 @@ require (
 	github.com/fgrosse/cli v0.0.0-20190104120053-ecd919dde986
 	github.com/golang/protobuf v1.5.2
 	github.com/jhump/protoreflect v1.14.1
+	github.com/landoop/schema-registry v0.0.0-20190327143759-50a5701c1891
+	github.com/linkedin/goavro/v2 v2.12.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/viper v1.15.0

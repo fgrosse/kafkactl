@@ -32,11 +32,17 @@ type TopicConfig struct {
 
 type TopicSchemaConfig struct {
 	Proto TopicProtoConfig `yaml:"proto"`
+	Avro  TopicAvroConfig  `yaml:"avro"`
 }
 
 type TopicProtoConfig struct {
 	Type string `yaml:"type"`
 	File string `yaml:"file"`
+}
+
+type TopicAvroConfig struct {
+	RegistryURL     string `yaml:"registry_url"`
+	PrintAvroSchema bool   `yaml:"print_avro_json"`
 }
 
 type GlobalProtoDecoderConfig struct {
