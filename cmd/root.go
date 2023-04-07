@@ -32,7 +32,7 @@ type Kafkactl struct {
 }
 
 func New() *Kafkactl {
-	defaultConfigPath := filepath.Join(os.ExpandEnv("$HOME"), ".config", "kafkactl2", "config.yml") // TODO: s/kafkactl2/kafkactl
+	defaultConfigPath := filepath.Join(os.ExpandEnv("$HOME"), ".config", "kafkactl", "config.yml")
 	logger := log.New(os.Stderr, "", 0)
 	debug := log.New(io.Discard, "", 0)
 

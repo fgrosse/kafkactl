@@ -69,7 +69,7 @@ Additional Commands:
   completion  Generate the autocompletion script for the specified shell
 
 Flags:
-      --config string    path to kafkactl config file (default "/home/fgrosse/.config/kafkactl2/config.yml")
+      --config string    path to kafkactl config file (default "/home/fgrosse/.config/kafkactl/config.yml")
       --context string   the name of the kafkactl context to use (defaults to "current_context" field from config file)
   -h, --help             help for kafkactl
   -v, --verbose          enable verbose output
