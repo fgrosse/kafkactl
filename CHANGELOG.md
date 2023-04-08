@@ -5,7 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-- Support decoding Avro messages
+- `kafkactl consume`: Support decoding Avro messages
+- `kafkactl get message`: Support decoding Avro messages
 - `kafkactl get topic`: Treat topics with single `_` prefix as internal (instead of double `_` prefix)
 - `kafkactl get topic`: Show warning about missing topic metadata only in verbose mode
 
