@@ -3,6 +3,7 @@ package pkg
 import (
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
@@ -13,24 +14,37 @@ import (
 )
 
 func TestAvroDecoder(t *testing.T) {
-	schema := `{
-		"type": "record",
-		"namespace": "test",
-		"name" : "Record",
-		"fields" : [
-		  { "name" : "Name" , "type" : "string" },
-		  { "name" : "Age" , "type" : "int" }
-		] 
-	}`
+	schemaRegistry := TestingSchemaRegistry{
+		1: `{
+			"type": "record",
+			"namespace": "test",
+			"name" : "Key",
+			"fields" : [
+			  { "name" : "id" , "type" : "string" }
+			] 
+		}`,
+		2: `{
+			"type": "record",
+			"namespace": "test",
+			"name" : "Record",
+			"fields" : [
+			  { "name" : "Name" , "type" : "string" },
+			  { "name" : "Age" , "type" : "int" }
+			] 
+		}`,
+	}
 
-	encoded := encodeAvro(t, schema, 123, map[string]any{
+	encodedKey := encodeAvro(t, schemaRegistry[1], 1, map[string]any{
+		"id": "e2901280-d602-11ed-99dc-9c2dcd849371",
+	})
+	encodedValue := encodeAvro(t, schemaRegistry[2], 2, map[string]any{
 		"Name": "John Doe",
 		"Age":  42,
 	})
 
 	msg := &sarama.ConsumerMessage{
-		Key:       []byte("123"),
-		Value:     encoded,
+		Key:       encodedKey,
+		Value:     encodedValue,
 		Topic:     "test-topic",
 		Partition: 1,
 		Offset:    42,
@@ -42,7 +56,7 @@ func TestAvroDecoder(t *testing.T) {
 	}
 
 	expected := &Message{
-		Key:       "123",
+		Key:       json.RawMessage(`{"id":"e2901280-d602-11ed-99dc-9c2dcd849371"}`),
 		Topic:     "test-topic",
 		Partition: 1,
 		Offset:    42,
@@ -51,7 +65,7 @@ func TestAvroDecoder(t *testing.T) {
 	}
 	expectedValue := `{ "Name":"John Doe", "Age":42 }`
 
-	d := NewAvroDecoder(TestingSchemaRegistry{schema})
+	d := NewAvroDecoder(schemaRegistry)
 	actual, err := d.Decode(msg)
 	require.NoError(t, err)
 
@@ -71,15 +85,18 @@ func encodeAvro(t *testing.T, schema string, id uint32, value any) []byte {
 	require.NoError(t, err)
 
 	idBuf := make([]byte, 5)
-	binary.BigEndian.PutUint32(idBuf, id)
+	binary.BigEndian.PutUint32(idBuf[1:], id)
 
 	return append(idBuf, encoded...)
 }
 
-type TestingSchemaRegistry struct {
-	schema string
-}
+type TestingSchemaRegistry map[int]string
 
-func (r TestingSchemaRegistry) Schema(int) (string, error) {
-	return r.schema, nil
+func (r TestingSchemaRegistry) Schema(id int) (string, error) {
+	schema, ok := r[id]
+	if !ok {
+		return "", fmt.Errorf("unknown schema %d", id)
+	}
+
+	return schema, nil
 }

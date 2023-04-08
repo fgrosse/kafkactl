@@ -495,7 +495,7 @@ func (cmd *command) sendMessages(
 		outPartition, outOffset, err := destination.SendMessage(out)
 		if err != nil {
 			numErrors++
-			cmd.logger.Printf("Error: failed to send message to destination topic: %w", err)
+			cmd.logger.Printf("Error: failed to send message to destination topic: %v", err)
 			continue
 		}
 
