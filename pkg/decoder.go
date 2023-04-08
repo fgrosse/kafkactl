@@ -14,7 +14,7 @@ type Message struct {
 	Offset    int64
 	Headers   map[string][]string
 	Timestamp time.Time
-	Key       string
+	Key       any
 	Value     any
 }
 
@@ -62,21 +62,19 @@ func NewTopicDecoder(topic string, conf Configuration) (Decoder, error) {
 // The StringDecoder assumes that the values of all consumed messages are unicode strings.
 type StringDecoder struct{}
 
-func (d *StringDecoder) Decode(msg *sarama.ConsumerMessage) (*Message, error) {
-	return newMessage(msg, func(value []byte) (any, error) {
-		return string(value), nil
-	})
+func (d *StringDecoder) Decode(kafkaMsg *sarama.ConsumerMessage) (*Message, error) {
+	msg := NewMessage(kafkaMsg)
+	msg.Key = string(kafkaMsg.Key)
+	msg.Value = string(kafkaMsg.Value)
+	return msg, nil
 }
 
-func newMessage(m *sarama.ConsumerMessage, decodeValue func([]byte) (any, error)) (*Message, error) {
-	decoded, err := decodeValue(m.Value)
-	if err != nil {
-		return nil, err
-	}
-
+// NewMessage creates a new Message from a given Kafka message.
+// The Key and Value are copied into the Message as is (i.e. without decoding).
+func NewMessage(m *sarama.ConsumerMessage) *Message {
 	msg := &Message{
-		Key:       string(m.Key),
-		Value:     decoded,
+		Key:       m.Key,
+		Value:     m.Value,
 		Topic:     m.Topic,
 		Partition: m.Partition,
 		Offset:    m.Offset,
@@ -89,5 +87,5 @@ func newMessage(m *sarama.ConsumerMessage, decodeValue func([]byte) (any, error)
 		msg.Headers[key] = append(msg.Headers[key], string(h.Value))
 	}
 
-	return msg, nil
+	return msg
 }
