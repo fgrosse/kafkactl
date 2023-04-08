@@ -115,7 +115,12 @@ func (cmd *command) consume(ctx context.Context, topic string, partitions []int,
 
 		switch outputEncoding {
 		case "raw":
-			fmt.Fprintln(os.Stdout, decoded.Value)
+			val := decoded.Value
+			if jsonVal, ok := val.(json.RawMessage); ok {
+				val = string(jsonVal)
+			}
+
+			fmt.Fprintln(os.Stdout, val)
 		case "json":
 			val, err := json.Marshal(decoded)
 			if err != nil {
