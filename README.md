@@ -12,9 +12,9 @@
 It can be used to **query** information (e.g., brokers, topics, messages, consumers, etc.)
 or **create**, **update**, and **delete** resources in the Kafka cluster. The command can
 be used to **consume** and **produce** messages and has native support for Kafka messages
-that are encoded as [Protocol Buffers][protobuf]. Finally, kafkactl implements more
-advanced behaviour on top of these primitives, e.g. to **replay** messages on the same
-or another cluster.
+that are encoded using [Protocol Buffers][protobuf] or [Apache Avro][avro].
+Finally, kafkactl implements more advanced behaviour on top of these primitives,
+e.g. to **replay** messages on the same or another cluster.
 
 ![](docs/demo.gif)
 
@@ -33,7 +33,7 @@ If you have [Go][go] installed, you can fetch the latest code and compile an
 executable binary using the following command:
 
 ```
-go get github.com/fgrosse/kafkactl
+go install github.com/fgrosse/kafkactl@latest
 ```
 
 ## Usage
@@ -69,7 +69,7 @@ Additional Commands:
   completion  Generate the autocompletion script for the specified shell
 
 Flags:
-      --config string    path to kafkactl config file (default "/home/fgrosse/.config/kafkactl2/config.yml")
+      --config string    path to kafkactl config file (default "/home/fgrosse/.config/kafkactl/config.yml")
       --context string   the name of the kafkactl context to use (defaults to "current_context" field from config file)
   -h, --help             help for kafkactl
   -v, --verbose          enable verbose output
@@ -186,6 +186,7 @@ This project is licensed under the BSD-3-Clause License - see the [LICENSE](LICE
 
 [kafka]: https://kafka.apache.org/
 [protobuf]: https://protobuf.dev/
+[avro]: https://avro.apache.org/
 [go]: https://go.dev/
 [releases]: https://github.com/fgrosse/kafkactl/releases
 [fraugster]: https://github.com/fraugster

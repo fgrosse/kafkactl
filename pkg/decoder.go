@@ -31,6 +31,19 @@ func NewTopicDecoder(topic string, conf Configuration) (Decoder, error) {
 	switch {
 	case topicConf == nil:
 		return new(StringDecoder), nil
+	case topicConf.Schema.Avro.RegistryURL != "":
+		r, err := NewKafkaSchemaRegistry(topicConf.Schema.Avro.RegistryURL)
+		if err != nil {
+			return nil, err
+		}
+
+		dec := NewAvroDecoder(r)
+		if topicConf.Schema.Avro.PrintAvroSchema {
+			dec.UseAvroJSON()
+		}
+
+		return dec, nil
+
 	case topicConf.Schema.Proto.Type != "":
 		for i, s := range conf.Proto.Includes {
 			conf.Proto.Includes[i] = os.ExpandEnv(s)
