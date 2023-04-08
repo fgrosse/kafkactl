@@ -51,7 +51,7 @@ func TestAvroDecoder(t *testing.T) {
 	}
 	expectedValue := `{ "Name":"John Doe", "Age":42 }`
 
-	d := NewAvroDecoder(TestingSchemaRegistry{schema}, false)
+	d := NewAvroDecoder(TestingSchemaRegistry{schema})
 	actual, err := d.Decode(msg)
 	require.NoError(t, err)
 

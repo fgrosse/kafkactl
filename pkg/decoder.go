@@ -37,7 +37,12 @@ func NewTopicDecoder(topic string, conf Configuration) (Decoder, error) {
 			return nil, err
 		}
 
-		return NewAvroDecoder(r, topicConf.Schema.Avro.PrintAvroSchema), nil
+		dec := NewAvroDecoder(r)
+		if topicConf.Schema.Avro.PrintAvroSchema {
+			dec.UseAvroJSON()
+		}
+
+		return dec, nil
 
 	case topicConf.Schema.Proto.Type != "":
 		for i, s := range conf.Proto.Includes {

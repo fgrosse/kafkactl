@@ -6,6 +6,10 @@ import (
 	"github.com/landoop/schema-registry"
 )
 
+type SchemaRegistry interface {
+	Schema(id int) (string, error)
+}
+
 type KafkaSchemaRegistry struct {
 	client  *schemaregistry.Client
 	schemas map[int]string
