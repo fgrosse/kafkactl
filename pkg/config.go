@@ -23,6 +23,14 @@ type Configuration struct {
 type ContextConfiguration struct {
 	Name    string   `yaml:"name"`
 	Brokers []string `yaml:"brokers"`
+
+	SchemaRegistry SchemaRegistryConfiguration `yaml:"schema_registry,omitempty"`
+}
+
+type SchemaRegistryConfiguration struct {
+	URL      string `yaml:"url"`
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
 }
 
 type TopicConfig struct {
@@ -31,8 +39,8 @@ type TopicConfig struct {
 }
 
 type TopicSchemaConfig struct {
+	Type  string           `yaml:"type"` // "avro" or "proto"
 	Proto TopicProtoConfig `yaml:"proto"`
-	Avro  TopicAvroConfig  `yaml:"avro"`
 }
 
 type TopicProtoConfig struct {
@@ -209,16 +217,16 @@ func (conf *Configuration) RenameContext(oldName, newName string) error {
 }
 
 func (conf *Configuration) Brokers(context string) []string {
-	var brokers []string
-	for _, c := range conf.Contexts {
-		if c.Name != context {
-			continue
-		}
-
-		for _, addr := range c.Brokers {
-			brokers = append(brokers, ensurePort(addr))
-		}
+	ct, err := conf.GetContext(context)
+	if err != nil {
+		return nil
 	}
+
+	brokers := ct.Brokers
+	for i, addr := range brokers {
+		brokers[i] = ensurePort(addr)
+	}
+
 	return brokers
 }
 

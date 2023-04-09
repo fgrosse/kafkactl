@@ -28,6 +28,10 @@ contexts:
   - name: localhost
     brokers:
       - localhost:9092
+    schema_registry:
+      url: http://localhost:8081
+      username: test
+      password: secret
 `
 
 	expected := &Configuration{
@@ -46,6 +50,11 @@ contexts:
 			{
 				Name:    "localhost",
 				Brokers: []string{"localhost:9092"},
+				SchemaRegistry: SchemaRegistryConfiguration{
+					URL:      "http://localhost:8081",
+					Username: "test",
+					Password: "secret",
+				},
 			},
 		},
 	}

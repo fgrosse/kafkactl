@@ -140,7 +140,7 @@ This incarnation of `kafkactl` was created at [Fraugster][fraugster] in Septembe
 It was a useful tool for many years and we decided to keep it around even after Fraugster
 ceased to exist, mainly because we are very used to it and maybe for sentimental reasons.
 
-Other `kafkactl` implementations come with similar features (e.g. Protobuf support,
+Other `kafkactl` implementations come with similar features (e.g. Protobuf & Avro support,
 managing configuration with kubectl-like contexts). We list them here, so you can
 pick the tool that serves your use case best:
 
@@ -150,6 +150,8 @@ pick the tool that serves your use case best:
 ## Built With
 
 * [sarama](https://github.com/Shopify/sarama) - a Go library for Apache Kafka
+* [confluent-kafka-go](github.com/confluentinc/confluent-kafka-go) - Confluent's Apache Kafka Golang client
+* [goavro](github.com/linkedin/goavro) - a library that encodes and decodes Avro data
 * [cobra](https://github.com/spf13/cobra) - a library to build powerful CLI applications
 * [viper](https://github.com/spf13/viper) - configuration with fangs
 * [protoreflect](https://github.com/jhump/protoreflect) - reflection for Go Protocol Buffers

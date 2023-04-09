@@ -11,23 +11,14 @@ import (
 
 // AvroDecoder is a Decoder implementation that supports the Apache Avro format.
 type AvroDecoder struct {
-	registry        SchemaRegistry
-	printAvroSchema bool
+	registry SchemaRegistry
 }
 
 // NewAvroDecoder creates a new AvroDecoder instance.
 func NewAvroDecoder(r SchemaRegistry) *AvroDecoder {
 	return &AvroDecoder{
-		registry:        r,
-		printAvroSchema: false,
+		registry: r,
 	}
-}
-
-// UseAvroJSON configures the AvroDecoder to serialize the decoded data using
-// avro-json which is still valid JSON, but encodes fields in a more verbose way
-// and has special handling for union types.
-func (d *AvroDecoder) UseAvroJSON() {
-	d.printAvroSchema = true
 }
 
 // Decode a message from Kafka into our own Message type.
@@ -67,13 +58,7 @@ func (d *AvroDecoder) decode(value []byte) (json.RawMessage, error) {
 		return nil, fmt.Errorf("registry: %w", err)
 	}
 
-	var codec *goavro.Codec
-	if d.printAvroSchema {
-		codec, err = goavro.NewCodec(schema)
-	} else {
-		codec, err = goavro.NewCodecForStandardJSONFull(schema)
-	}
-
+	codec, err := goavro.NewCodecForStandardJSONFull(schema)
 	if err != nil {
 		return nil, fmt.Errorf("codec: %w", err)
 	}
