@@ -85,7 +85,7 @@ func SaveConfiguration(w io.Writer, conf *Configuration) error {
 }
 
 func (conf *Configuration) AddContext(name string, brokers ...string) error {
-	_, err := conf.GetContext(name)
+	_, err := conf.Context(name)
 	if err == nil {
 		return fmt.Errorf("there is already a context named %q", name)
 	}
@@ -102,7 +102,11 @@ func (conf *Configuration) AddContext(name string, brokers ...string) error {
 	return nil
 }
 
-func (conf *Configuration) GetContext(name string) (ContextConfiguration, error) {
+func (conf *Configuration) Context(name string) (ContextConfiguration, error) {
+	if name == "" {
+		return ContextConfiguration{}, errors.New("missing context name")
+	}
+
 	for _, c := range conf.Contexts {
 		if c.Name == name {
 			return c, nil
@@ -217,7 +221,7 @@ func (conf *Configuration) RenameContext(oldName, newName string) error {
 }
 
 func (conf *Configuration) Brokers(context string) []string {
-	ct, err := conf.GetContext(context)
+	ct, err := conf.Context(context)
 	if err != nil {
 		return nil
 	}

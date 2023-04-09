@@ -124,10 +124,13 @@ contexts:
 	assert.YAMLEq(t, expected, w.String())
 }
 
-func TestConfiguration_GetContext(t *testing.T) {
+func TestConfiguration_Context(t *testing.T) {
 	c := NewConfiguration()
 
-	actual, err := c.GetContext("test")
+	actual, err := c.Context("")
+	assert.EqualError(t, err, `missing context name`)
+
+	actual, err = c.Context("test")
 	assert.EqualError(t, err, `there is no context called "test"`)
 
 	expected := ContextConfiguration{
@@ -141,7 +144,7 @@ func TestConfiguration_GetContext(t *testing.T) {
 
 	c.Contexts = append(c.Contexts, expected)
 
-	actual, err = c.GetContext("test")
+	actual, err = c.Context("test")
 	require.NoError(t, err)
 
 	assert.Equal(t, expected, actual)
