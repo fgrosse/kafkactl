@@ -22,10 +22,14 @@ func (cmd *command) ConsumeCmd() *cobra.Command {
 		Short:   "Consume messages from a Kafka topic and print them to stdout",
 		Long: `Consume messages from a Kafka topic and print them to stdout.
 
-By default, the --output flag is set to "raw" which means that the command will
-only print the message values followed by a newline. You can set --output=json
-in order to print each consumed message as a JSON object which will contain the 
-partition and offset information in addition to the message value.
+By default, the --output flag is set to "json" which means that the command will
+try to decode values and print their JSON representation to stdout, followed by
+a newline. You can set --output=raw if you do not want to decode the data but
+see the raw message as it is stored in Kafka.
+
+You can set --output-meta to enable printing more information about each consumed
+message, such as the message key as well as headers, partition and offset
+information.
 
 Values will automatically be decoded using the topic schema configuration from the
 kafkactl configuration file (e.g. to decode proto messages and print them as JSON).
@@ -52,12 +56,16 @@ messages by sending SIGINT, SIGQUIT or SIGTERM to the process (e.g. by pressing 
 			offsetStr := viper.GetString("offset")
 			groupID := viper.GetString("group")
 			outputEncoding := viper.GetString("output")
+			outputMeta := viper.GetBool("output-meta")
 
 			if groupID != "" && cc.Flag("offset").Changed {
 				return fmt.Errorf("cannot use --group and --offset together: the consumer group will determine the offset automatically")
 			}
 			if groupID != "" && cc.Flag("partition").Changed {
 				return fmt.Errorf("cannot use --group and --partition together: the consumer group will determine the partition automatically")
+			}
+			if outputMeta && outputEncoding == "raw" {
+				return fmt.Errorf("using --output-meta and --output=raw at the same time is currently not supported")
 			}
 
 			var offset int64
@@ -74,7 +82,7 @@ messages by sending SIGINT, SIGQUIT or SIGTERM to the process (e.g. by pressing 
 				offset = int64(n)
 			}
 
-			return cmd.consume(ctx, topic, partitions, offset, groupID, outputEncoding)
+			return cmd.consume(ctx, topic, partitions, offset, groupID, outputEncoding, outputMeta)
 		},
 	}
 
@@ -82,12 +90,13 @@ messages by sending SIGINT, SIGQUIT or SIGTERM to the process (e.g. by pressing 
 	flags.IntSlice("partition", nil, "Kafka topic partition. Can be passed multiple times. By default all partitions are consumed")
 	flags.String("offset", "newest", `either "oldest" or "newest". Can be an integer when consuming only a single partition`)
 	flags.String("group", "", `join a consumer group. Cannot be used together with partition or offset fag`)
-	flags.StringP("output", "o", "raw", "output format. One of raw|json. See --help output for more information")
+	flags.StringP("output", "o", "json", "output format. One of json|raw")
+	flags.Bool("output-meta", false, "also print meta information about all consumed messages. See --help output for more information")
 
 	return produceCmd
 }
 
-func (cmd *command) consume(ctx context.Context, topic string, partitions []int, offset int64, groupID, outputEncoding string) error {
+func (cmd *command) consume(ctx context.Context, topic string, partitions []int, offset int64, groupID, outputEncoding string, outputMeta bool) error {
 	conf := cmd.Configuration()
 	dec, err := internal.NewTopicDecoder(topic, *conf)
 	if err != nil {
@@ -108,27 +117,30 @@ func (cmd *command) consume(ctx context.Context, topic string, partitions []int,
 	}
 
 	for msg := range messages {
+		if outputEncoding == "raw" {
+			_, err := os.Stdout.Write(msg.Value)
+			return err
+		}
+
 		decoded, err := dec.Decode(msg)
 		if err != nil {
 			return fmt.Errorf("failed to decode message from Kafka: %w", err)
 		}
 
-		switch outputEncoding {
-		case "raw":
-			val := decoded.Value
-			if jsonVal, ok := val.(json.RawMessage); ok {
-				val = string(jsonVal)
-			}
-
-			fmt.Fprintln(os.Stdout, val)
-		case "json":
-			val, err := json.Marshal(decoded)
-			if err != nil {
-				return err
-			}
-			fmt.Fprintln(os.Stdout, string(val))
+		var out = decoded.Value
+		if outputMeta {
+			out = decoded
 		}
 
+		jsonOutput, err := json.Marshal(out)
+		if err != nil {
+			return err
+		}
+
+		_, err = fmt.Fprintln(os.Stdout, string(jsonOutput))
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
