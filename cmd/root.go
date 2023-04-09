@@ -19,7 +19,7 @@ import (
 	"github.com/fgrosse/kafkactl/cmd/produce"
 	"github.com/fgrosse/kafkactl/cmd/replay"
 	"github.com/fgrosse/kafkactl/cmd/update"
-	"github.com/fgrosse/kafkactl/pkg"
+	"github.com/fgrosse/kafkactl/internal"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -28,7 +28,7 @@ type Kafkactl struct {
 	*cobra.Command
 	logger *log.Logger
 	debug  *log.Logger
-	conf   *pkg.Configuration
+	conf   *internal.Configuration
 }
 
 func New() *Kafkactl {
@@ -37,7 +37,7 @@ func New() *Kafkactl {
 	debug := log.New(io.Discard, "", 0)
 
 	cmd := &Kafkactl{
-		conf:   pkg.NewConfiguration(),
+		conf:   internal.NewConfiguration(),
 		logger: logger,
 		debug:  debug,
 		Command: &cobra.Command{
@@ -110,7 +110,7 @@ func (cmd *Kafkactl) loadConfiguration() error {
 	}
 
 	defer f.Close()
-	cmd.conf, err = pkg.LoadConfiguration(f)
+	cmd.conf, err = internal.LoadConfiguration(f)
 	if err != nil {
 		return err
 	}
@@ -139,7 +139,7 @@ func (cmd *Kafkactl) SaveConfiguration() error {
 		return fmt.Errorf("create configuration file: %w", err)
 	}
 
-	err = pkg.SaveConfiguration(f, cmd.conf)
+	err = internal.SaveConfiguration(f, cmd.conf)
 	if err != nil {
 		return err
 	}
@@ -186,7 +186,7 @@ func (cmd *Kafkactl) ConnectAdmin() (sarama.ClusterAdmin, error) {
 	return sarama.NewClusterAdmin(brokers, cmd.SaramaConfig())
 }
 
-func (cmd *Kafkactl) Configuration() *pkg.Configuration {
+func (cmd *Kafkactl) Configuration() *internal.Configuration {
 	return cmd.conf
 }
 

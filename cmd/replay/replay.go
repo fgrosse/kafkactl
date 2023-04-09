@@ -11,7 +11,7 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/fgrosse/cli"
-	"github.com/fgrosse/kafkactl/pkg"
+	"github.com/fgrosse/kafkactl/internal"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -249,7 +249,7 @@ func (cmd *command) newSourceClient() (sarama.Client, error) {
 	return client, nil
 }
 
-func (cmd *command) parseSourceConfig(client sarama.Client, topic string, partitions []int32, offsets []int64, fromOffset, untilOffset, offsetsFile string) ([]pkg.PartitionOffsetRange, []pkg.PartitionOffsets, error) {
+func (cmd *command) parseSourceConfig(client sarama.Client, topic string, partitions []int32, offsets []int64, fromOffset, untilOffset, offsetsFile string) ([]internal.PartitionOffsetRange, []internal.PartitionOffsets, error) {
 	if offsetsFile != "" {
 		return cmd.parseOffsetsFile(client, offsetsFile, topic)
 	}
@@ -267,7 +267,7 @@ func (cmd *command) parseSourceConfig(client sarama.Client, topic string, partit
 			return nil, nil, fmt.Errorf("cannot use --offset when consuming multiple partitions.\nPlease specify one partition using --partition or use --offsets-file to configure each partition offset separately")
 		}
 
-		return nil, []pkg.PartitionOffsets{{Partition: partitions[0], Offsets: offsets}}, nil
+		return nil, []internal.PartitionOffsets{{Partition: partitions[0], Offsets: offsets}}, nil
 	}
 
 	startOffset, err := parseFromOffset(fromOffset, len(partitions))
@@ -280,7 +280,7 @@ func (cmd *command) parseSourceConfig(client sarama.Client, topic string, partit
 		return nil, nil, err
 	}
 
-	var partitionRanges []pkg.PartitionOffsetRange
+	var partitionRanges []internal.PartitionOffsetRange
 	for _, partition := range partitions {
 		if maxOffsets[partition] == -1 {
 			// We want to read up until the most recent message but this partition
@@ -289,7 +289,7 @@ func (cmd *command) parseSourceConfig(client sarama.Client, topic string, partit
 			continue
 		}
 
-		r := pkg.PartitionOffsetRange{
+		r := internal.PartitionOffsetRange{
 			Partition: partition,
 			From:      startOffset,
 		}
@@ -308,7 +308,7 @@ func (cmd *command) parseSourceConfig(client sarama.Client, topic string, partit
 	return partitionRanges, nil, nil
 }
 
-func (cmd *command) parseOffsetsFile(client sarama.Client, path, topic string) ([]pkg.PartitionOffsetRange, []pkg.PartitionOffsets, error) {
+func (cmd *command) parseOffsetsFile(client sarama.Client, path, topic string) ([]internal.PartitionOffsetRange, []internal.PartitionOffsets, error) {
 	type OffsetsFile struct {
 		Partitions []struct {
 			Partition int32
@@ -329,18 +329,18 @@ func (cmd *command) parseOffsetsFile(client sarama.Client, path, topic string) (
 	}
 
 	var (
-		partitionRanges  []pkg.PartitionOffsetRange
-		partitionOffsets []pkg.PartitionOffsets
+		partitionRanges  []internal.PartitionOffsetRange
+		partitionOffsets []internal.PartitionOffsets
 	)
 
 	for _, p := range file.Partitions {
 		if len(p.Offsets) > 0 {
-			partitionOffsets = append(partitionOffsets, pkg.PartitionOffsets{
+			partitionOffsets = append(partitionOffsets, internal.PartitionOffsets{
 				Partition: p.Partition,
 				Offsets:   p.Offsets,
 			})
 		} else {
-			r := pkg.PartitionOffsetRange{Partition: p.Partition}
+			r := internal.PartitionOffsetRange{Partition: p.Partition}
 
 			switch p.From {
 			case "", "oldest":
@@ -431,13 +431,13 @@ func parseUntilOffset(offset string, client sarama.Client, topic string, partiti
 	}
 }
 
-func (cmd *command) consumeOffsets(ctx context.Context, client sarama.Client, topic string, partitions []pkg.PartitionOffsets, fetchSize int32) (<-chan *sarama.ConsumerMessage, error) {
-	consumer := pkg.NewOffsetConsumer(client, fetchSize, cmd.logger, cmd.debug)
+func (cmd *command) consumeOffsets(ctx context.Context, client sarama.Client, topic string, partitions []internal.PartitionOffsets, fetchSize int32) (<-chan *sarama.ConsumerMessage, error) {
+	consumer := internal.NewOffsetConsumer(client, fetchSize, cmd.logger, cmd.debug)
 	return consumer.Consume(ctx, topic, partitions)
 }
 
-func (cmd *command) consumeRange(ctx context.Context, client sarama.Client, topic string, partitions []pkg.PartitionOffsetRange) (<-chan *sarama.ConsumerMessage, error) {
-	consumer := pkg.NewRangeConsumer(client, cmd.debug)
+func (cmd *command) consumeRange(ctx context.Context, client sarama.Client, topic string, partitions []internal.PartitionOffsetRange) (<-chan *sarama.ConsumerMessage, error) {
+	consumer := internal.NewRangeConsumer(client, cmd.debug)
 	return consumer.Consume(ctx, topic, partitions)
 }
 

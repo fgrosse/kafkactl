@@ -9,7 +9,7 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/fgrosse/cli"
-	"github.com/fgrosse/kafkactl/pkg"
+	"github.com/fgrosse/kafkactl/internal"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -89,7 +89,7 @@ messages by sending SIGINT, SIGQUIT or SIGTERM to the process (e.g. by pressing 
 
 func (cmd *command) consume(ctx context.Context, topic string, partitions []int, offset int64, groupID, outputEncoding string) error {
 	conf := cmd.Configuration()
-	dec, err := pkg.NewTopicDecoder(topic, *conf)
+	dec, err := internal.NewTopicDecoder(topic, *conf)
 	if err != nil {
 		return err
 	}
@@ -147,7 +147,7 @@ func (cmd *command) joinConsumerGroup(ctx context.Context, topic, groupID string
 		topic, groupID,
 	)
 
-	return pkg.JoinConsumerGroup(ctx, client, topic, groupID, cmd.logger)
+	return internal.JoinConsumerGroup(ctx, client, topic, groupID, cmd.logger)
 }
 
 func (cmd *command) simpleConsumer(ctx context.Context, topic string, partitions []int, offset int64) (<-chan *sarama.ConsumerMessage, error) {
@@ -163,7 +163,7 @@ func (cmd *command) simpleConsumer(ctx context.Context, topic string, partitions
 		return nil, fmt.Errorf("failed to create consumer: %w", err)
 	}
 
-	con := pkg.NewConsumer(c)
+	con := internal.NewConsumer(c)
 	cmd.logger.Printf("Consuming messages from %s of topic %q starting at %s",
 		humanFriendlyPartitions(partitions), topic, humanFriendlyOffset(offset),
 	)
@@ -174,9 +174,9 @@ func (cmd *command) simpleConsumer(ctx context.Context, topic string, partitions
 	case 1:
 		return con.ConsumePartition(ctx, topic, int32(partitions[0]), offset)
 	default:
-		pp := make([]pkg.PartitionOffset, len(partitions))
+		pp := make([]internal.PartitionOffset, len(partitions))
 		for i, p := range partitions {
-			pp[i] = pkg.PartitionOffset{
+			pp[i] = internal.PartitionOffset{
 				Partition: int32(p),
 				Offset:    offset,
 			}

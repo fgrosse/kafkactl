@@ -4,7 +4,7 @@ import (
 	"log"
 
 	"github.com/Shopify/sarama"
-	"github.com/fgrosse/kafkactl/pkg"
+	"github.com/fgrosse/kafkactl/internal"
 	"github.com/spf13/cobra"
 )
 
@@ -16,7 +16,7 @@ type command struct {
 }
 
 type BaseCommand interface {
-	Configuration() *pkg.Configuration
+	Configuration() *internal.Configuration
 	SaramaConfig() *sarama.Config
 	ConnectClient(*sarama.Config) (sarama.Client, error)
 	ConnectAdmin() (sarama.ClusterAdmin, error)
