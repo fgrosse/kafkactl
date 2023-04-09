@@ -28,21 +28,23 @@ func NewTopicDecoder(topic string, conf Configuration) (Decoder, error) {
 		return nil, fmt.Errorf("failed to load topic configuration: %w", err)
 	}
 
+	registry, _ := NewSchemaRegistry(conf)
+
 	switch {
 	case topicConf == nil:
 		return new(StringDecoder), nil
-	case topicConf.Schema.Avro.RegistryURL != "":
-		r, err := NewKafkaSchemaRegistry(topicConf.Schema.Avro.RegistryURL)
-		if err != nil {
-			return nil, err
+
+	case topicConf.Schema.Type == "avro":
+		if registry == nil {
+			return nil, fmt.Errorf(`topic schema type is "avro"" but schema registry config is missing in context configuration`)
 		}
 
-		dec := NewAvroDecoder(r)
-		if topicConf.Schema.Avro.PrintAvroSchema {
-			dec.UseAvroJSON()
-		}
+		dec := NewAvroDecoder(registry)
 
 		return dec, nil
+
+	case topicConf.Schema.Type == "proto":
+		return nil, fmt.Errorf("reading proto schema from the Schema Registy is not yet supported. Please configure the proto type directly in the topic schema configuration")
 
 	case topicConf.Schema.Proto.Type != "":
 		for i, s := range conf.Proto.Includes {

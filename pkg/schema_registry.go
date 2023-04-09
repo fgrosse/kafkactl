@@ -3,41 +3,51 @@ package pkg
 import (
 	"fmt"
 
-	"github.com/landoop/schema-registry"
+	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry"
 )
 
 type SchemaRegistry interface {
 	Schema(id int) (string, error)
 }
 
-type KafkaSchemaRegistry struct {
-	client  *schemaregistry.Client
-	schemas map[int]string
+type ConfluentSchemaRegistry struct {
+	client schemaregistry.Client
 }
 
-func NewKafkaSchemaRegistry(baseURL string) (*KafkaSchemaRegistry, error) {
-	client, err := schemaregistry.NewClient(baseURL)
+func NewSchemaRegistry(conf Configuration) (SchemaRegistry, error) {
+	contextConfig, err := conf.GetContext(conf.CurrentContext)
+	if err != nil {
+		return nil, fmt.Errorf("get context: %w", err)
+	}
+
+	if contextConfig.SchemaRegistry.URL == "" {
+		return nil, fmt.Errorf("missing schema registry base URL")
+	}
+
+	return NewConfluentSchemaRegistry(contextConfig.SchemaRegistry)
+}
+
+func NewConfluentSchemaRegistry(config SchemaRegistryConfiguration) (*ConfluentSchemaRegistry, error) {
+	var conf *schemaregistry.Config
+	if config.Username != "" {
+		conf = schemaregistry.NewConfigWithAuthentication(config.URL, config.Username, config.Password)
+	} else {
+		conf = schemaregistry.NewConfig(config.URL)
+	}
+
+	client, err := schemaregistry.NewClient(conf)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create schema registry client: %w", err)
 	}
 
-	return &KafkaSchemaRegistry{
-		client:  client,
-		schemas: map[int]string{},
-	}, nil
+	return &ConfluentSchemaRegistry{client: client}, nil
 }
 
-func (r *KafkaSchemaRegistry) Schema(id int) (string, error) {
-	schema, ok := r.schemas[id]
-	if ok {
-		return schema, nil
-	}
-
-	schema, err := r.client.GetSchemaByID(id)
+func (r *ConfluentSchemaRegistry) Schema(id int) (string, error) {
+	schema, err := r.client.GetBySubjectAndID("", id)
 	if err != nil {
 		return "", err
 	}
 
-	r.schemas[id] = schema
-	return schema, nil
+	return schema.Schema, nil
 }
