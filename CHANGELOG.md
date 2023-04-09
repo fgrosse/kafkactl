@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+Nothing so far
+
+## [v1.1.0] - 2023-04-09
 - Fix Inconsistent meaning of --output=raw in get message and consume command (see fgrosse/kafkactl#2)
 - Make `github.com/fgrosse/kafkactl/pkg` internal
 - Integration with the [Confluent Schema Registry]
@@ -16,7 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v1.0.0] - 2023-03-07
 - Initial release
 
-[Unreleased]: https://github.com/fgrosse/kafkactl/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/fgrosse/kafkactl/compare/v1.2.0...HEAD
+[v1.1.0]: https://github.com/fgrosse/kafkactl/compare/v1.0.0...v1.1.0
 [v1.0.0]: https://github.com/fgrosse/kafkactl/releases/tag/v1.0.0
 
 [schema-registry]: https://docs.confluent.io/platform/current/schema-registry/index.html
