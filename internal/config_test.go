@@ -1,4 +1,4 @@
-package pkg
+package internal
 
 import (
 	"bytes"
@@ -73,7 +73,7 @@ bar: baz
 
 	r := strings.NewReader(input)
 	_, err := LoadConfiguration(r)
-	assert.EqualError(t, err, "yaml: unmarshal errors:\n  line 2: field foo not found in type pkg.Configuration\n  line 3: field bar not found in type pkg.Configuration")
+	assert.EqualError(t, err, "yaml: unmarshal errors:\n  line 2: field foo not found in type internal.Configuration\n  line 3: field bar not found in type internal.Configuration")
 }
 
 func TestSaveConfiguration(t *testing.T) {

@@ -8,7 +8,7 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/fgrosse/cli"
-	"github.com/fgrosse/kafkactl/pkg"
+	"github.com/fgrosse/kafkactl/internal"
 	"github.com/spf13/cobra"
 )
 
@@ -37,7 +37,7 @@ func (cmd *command) ProduceCmd() *cobra.Command {
 
 func (cmd *command) produce(ctx context.Context, topic string) error {
 	conf := cmd.Configuration()
-	encoder, err := pkg.NewTopicEncoder(topic, *conf)
+	encoder, err := internal.NewTopicEncoder(topic, *conf)
 	if err != nil {
 		return fmt.Errorf("failed to create proto encoder: %w", err)
 	}

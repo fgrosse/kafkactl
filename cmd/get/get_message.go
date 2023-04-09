@@ -9,7 +9,7 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/fgrosse/cli"
-	"github.com/fgrosse/kafkactl/pkg"
+	"github.com/fgrosse/kafkactl/internal"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -59,7 +59,7 @@ func (cmd *command) getMessage(ctx context.Context, offset, topic string, partit
 	}
 
 	conf := cmd.Configuration()
-	dec, err := pkg.NewTopicDecoder(topic, *conf)
+	dec, err := internal.NewTopicDecoder(topic, *conf)
 	if err != nil {
 		return err
 	}
@@ -118,5 +118,5 @@ func (cmd *command) fetchMessageForOffset(topic string, partition int32, offset 
 		return nil, fmt.Errorf("failed to determine leader for partition %d of topic %q: %w", partition, topic, err)
 	}
 
-	return pkg.FetchMessage(broker, topic, partition, offset, cmd.debug)
+	return internal.FetchMessage(broker, topic, partition, offset, cmd.debug)
 }
