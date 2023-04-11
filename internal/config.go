@@ -101,19 +101,16 @@ func SaveConfiguration(w io.Writer, conf *Configuration) error {
 	return enc.Close()
 }
 
-func (conf *Configuration) AddContext(name string, brokers ...string) error {
-	_, err := conf.Context(name)
+func (conf *Configuration) AddContext(contextConf ContextConfiguration) error {
+	_, err := conf.Context(contextConf.Name)
 	if err == nil {
-		return fmt.Errorf("there is already a context named %q", name)
+		return fmt.Errorf("there is already a context named %q", contextConf.Name)
 	}
 
-	conf.Contexts = append(conf.Contexts, ContextConfiguration{
-		Name:    name,
-		Brokers: brokers,
-	})
+	conf.Contexts = append(conf.Contexts, contextConf)
 
 	if conf.CurrentContext == "" {
-		conf.CurrentContext = name
+		conf.CurrentContext = contextConf.Name
 	}
 
 	return nil

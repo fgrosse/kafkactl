@@ -152,7 +152,14 @@ func TestConfiguration_Context(t *testing.T) {
 
 func TestConfiguration_AddContext(t *testing.T) {
 	c := NewConfiguration()
-	err := c.AddContext("test", "broker1.example.com:9092", "broker2.example.com:9092", "broker3.example.com:9092")
+	err := c.AddContext(ContextConfiguration{
+		Name: "test",
+		Brokers: []string{
+			"broker1.example.com:9092",
+			"broker2.example.com:9092",
+			"broker3.example.com:9092",
+		},
+	})
 	require.NoError(t, err)
 
 	expected := ContextConfiguration{
@@ -170,10 +177,24 @@ func TestConfiguration_AddContext(t *testing.T) {
 
 func TestConfiguration_AddContext_Duplicates(t *testing.T) {
 	c := NewConfiguration()
-	err := c.AddContext("test", "broker1.example.com:9092", "broker2.example.com:9092", "broker3.example.com:9092")
+	err := c.AddContext(ContextConfiguration{
+		Name: "test",
+		Brokers: []string{
+			"broker1.example.com:9092",
+			"broker2.example.com:9092",
+			"broker3.example.com:9092",
+		},
+	})
 	require.NoError(t, err)
 
-	err = c.AddContext("test", "broker1.example.com:9092", "broker2.example.com:9092", "broker3.example.com:9092")
+	err = c.AddContext(ContextConfiguration{
+		Name: "test",
+		Brokers: []string{
+			"broker1.example.com:9092",
+			"broker2.example.com:9092",
+			"broker3.example.com:9092",
+		},
+	})
 	assert.EqualError(t, err, `there is already a context named "test"`)
 	assert.Len(t, c.Contexts, 1)
 }
@@ -181,7 +202,14 @@ func TestConfiguration_AddContext_Duplicates(t *testing.T) {
 func TestConfiguration_AddContext_SetCurrentContextIfEmpty(t *testing.T) {
 	c := NewConfiguration()
 	require.Empty(t, c.CurrentContext)
-	err := c.AddContext("test", "broker1.example.com:9092", "broker2.example.com:9092", "broker3.example.com:9092")
+	err := c.AddContext(ContextConfiguration{
+		Name: "test",
+		Brokers: []string{
+			"broker1.example.com:9092",
+			"broker2.example.com:9092",
+			"broker3.example.com:9092",
+		},
+	})
 	require.NoError(t, err)
 
 	assert.Equal(t, "test", c.CurrentContext)
