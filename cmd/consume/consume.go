@@ -147,7 +147,11 @@ func (cmd *command) consume(ctx context.Context, topic string, partitions []int,
 }
 
 func (cmd *command) joinConsumerGroup(ctx context.Context, topic, groupID string) (<-chan *sarama.ConsumerMessage, error) {
-	saramaConf := cmd.SaramaConfig()
+	saramaConf, err := cmd.SaramaConfig()
+	if err != nil {
+		return nil, fmt.Errorf("config: %w", err)
+	}
+
 	saramaConf.Consumer.Return.Errors = false // TODO
 
 	client, err := cmd.ConnectClient(saramaConf)
@@ -163,7 +167,11 @@ func (cmd *command) joinConsumerGroup(ctx context.Context, topic, groupID string
 }
 
 func (cmd *command) simpleConsumer(ctx context.Context, topic string, partitions []int, offset int64) (<-chan *sarama.ConsumerMessage, error) {
-	saramaConf := cmd.SaramaConfig()
+	saramaConf, err := cmd.SaramaConfig()
+	if err != nil {
+		return nil, fmt.Errorf("config: %w", err)
+	}
+
 	saramaConf.Consumer.Return.Errors = false // TODO
 
 	client, err := cmd.ConnectClient(saramaConf)

@@ -102,7 +102,11 @@ func (cmd *command) getMessage(ctx context.Context, offset, topic string, partit
 }
 
 func (cmd *command) fetchMessageForOffset(topic string, partition int32, offset int64) (*sarama.ConsumerMessage, error) {
-	conf := cmd.SaramaConfig()
+	conf, err := cmd.SaramaConfig()
+	if err != nil {
+		return nil, fmt.Errorf("config: %w", err)
+	}
+
 	conf.Metadata.Full = false // we are only interested in very specific topics
 	conf.Producer.Return.Successes = true
 

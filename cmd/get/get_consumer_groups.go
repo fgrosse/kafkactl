@@ -119,7 +119,11 @@ func (cmd *command) listGroups() ([]string, error) {
 func (cmd *command) getConsumerGroup(groupID string) (ConsumerGroup, error) {
 	var description ConsumerGroup
 
-	conf := cmd.SaramaConfig()
+	conf, err := cmd.SaramaConfig()
+	if err != nil {
+		return description, fmt.Errorf("config: %w", err)
+	}
+
 	client, err := cmd.ConnectClient(conf)
 	if err != nil {
 		return description, err

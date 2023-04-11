@@ -42,7 +42,12 @@ func (cmd *command) produce(ctx context.Context, topic string) error {
 		return fmt.Errorf("failed to create proto encoder: %w", err)
 	}
 
-	c, err := cmd.ConnectClient(cmd.SaramaConfig())
+	saramaConf, err := cmd.SaramaConfig()
+	if err != nil {
+		return fmt.Errorf("config: %w", err)
+	}
+
+	c, err := cmd.ConnectClient(saramaConf)
 	if err != nil {
 		return err
 	}

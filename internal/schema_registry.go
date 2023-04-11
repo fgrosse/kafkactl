@@ -15,7 +15,7 @@ type ConfluentSchemaRegistry struct {
 }
 
 func NewSchemaRegistry(conf Configuration) (SchemaRegistry, error) {
-	contextConfig, err := conf.Context(conf.CurrentContext)
+	contextConfig, err := conf.GetCurrentContext()
 	if err != nil {
 		return nil, fmt.Errorf("get context: %w", err)
 	}

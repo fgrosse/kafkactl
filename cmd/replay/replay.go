@@ -238,7 +238,10 @@ func (cmd *command) connectSource(ctx context.Context, topic string, partitionID
 }
 
 func (cmd *command) newSourceClient() (sarama.Client, error) {
-	conf := cmd.SaramaConfig()
+	conf, err := cmd.SaramaConfig()
+	if err != nil {
+		return nil, fmt.Errorf("config: %w", err)
+	}
 	conf.Consumer.Return.Errors = false // TODO: log consumer errors
 
 	client, err := cmd.ConnectClient(conf)
@@ -443,7 +446,11 @@ func (cmd *command) consumeRange(ctx context.Context, client sarama.Client, topi
 
 func (cmd *command) connectDestination(destContext string) (sarama.SyncProducer, error) {
 	conf := cmd.Configuration()
-	saramaConf := cmd.SaramaConfig()
+	saramaConf, err := cmd.SaramaConfig()
+	if err != nil {
+		return nil, fmt.Errorf("config: %w", err)
+	}
+
 	saramaConf.Producer.Return.Successes = true
 	saramaConf.Producer.Return.Errors = true
 

@@ -183,18 +183,18 @@ func (cmd *Kafkactl) ConnectAdmin() (sarama.ClusterAdmin, error) {
 		return nil, errors.New("need at least one broker")
 	}
 
-	return sarama.NewClusterAdmin(brokers, cmd.SaramaConfig())
+	conf, err := cmd.SaramaConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	return sarama.NewClusterAdmin(brokers, conf)
 }
 
 func (cmd *Kafkactl) Configuration() *internal.Configuration {
 	return cmd.conf
 }
 
-func (*Kafkactl) SaramaConfig() *sarama.Config {
-	conf := sarama.NewConfig()
-	conf.Version = sarama.V1_1_0_0
-	conf.ClientID = "kafkactl"
-	conf.Metadata.Retry.Max = 0 // fail fast
-
-	return conf
+func (cmd *Kafkactl) SaramaConfig() (*sarama.Config, error) {
+	return cmd.conf.SaramaConfig()
 }
