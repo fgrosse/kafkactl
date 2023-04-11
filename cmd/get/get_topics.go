@@ -1,8 +1,10 @@
 package get
 
 import (
+	"errors"
 	"fmt"
 	"math"
+	"math/rand"
 	"regexp"
 	"sort"
 	"strings"
@@ -87,7 +89,12 @@ func (cmd *command) getTopics(showAll bool, regex, encoding string, args []strin
 
 	defer admin.Close()
 
-	topics, err := cmd.fetchTopics(client, admin, args, showAll, rexp)
+	withConsumers := true
+	if encoding == "table" {
+		withConsumers = false
+	}
+
+	topics, err := cmd.fetchTopics(client, admin, args, showAll, rexp, withConsumers)
 	if err != nil {
 		return err
 	}
@@ -99,17 +106,16 @@ func (cmd *command) getTopics(showAll bool, regex, encoding string, args []strin
 // empty set for all topics or one or more names to get information on specific
 // topics. Pass regexEnabled=true to parse the first topicsArgs element as a
 // regex. If showAll=true internal kafka topics will be displayed.
-func (cmd *command) fetchTopics(client sarama.Client, admin sarama.ClusterAdmin, topicsArgs []string, showAll bool, regex *regexp.Regexp) ([]Topic, error) {
-	topicMeta, err := cmd.fetchTopicMetaData(client, topicsArgs)
+func (cmd *command) fetchTopics(client sarama.Client, admin sarama.ClusterAdmin, topicsArgs []string, showAll bool, regex *regexp.Regexp, withConsumers bool) ([]Topic, error) {
+	topicDetails, err := cmd.fetchTopicMetaData(client, topicsArgs)
 	if err != nil {
 		return nil, err
 	}
 
-	topicDetails, err := admin.ListTopics()
-	if err != nil {
-		return nil, fmt.Errorf("failed to list topics: %w", err)
-	}
-
+	// TODO: re-enable or remove regex feature
+	//       To do this we should split the calls to first fetch really only
+	//       topic names, then filter them with the regexp and only then make
+	//       the more expensive calls to fetch meta data
 	var topics []Topic
 	for topicName, details := range topicDetails {
 		if !showAll && isIgnoredTopic(topicName) {
@@ -117,12 +123,6 @@ func (cmd *command) fetchTopics(client sarama.Client, admin sarama.ClusterAdmin,
 		}
 
 		if regex != nil && !regex.MatchString(topicName) {
-			continue
-		}
-
-		meta := topicMeta[topicName]
-		if meta == nil {
-			cmd.debug.Printf("WARNING: Did not find meta data for topic %q", topicName)
 			continue
 		}
 
@@ -134,14 +134,16 @@ func (cmd *command) fetchTopics(client sarama.Client, admin sarama.ClusterAdmin,
 		}
 
 		top.Retention = cmd.getTopicRetention(details)
-		top.Partitions = cmd.fetchTopicPartitions(client, topicName, details, meta)
+		top.Partitions = cmd.fetchPartitionsOffsets(client, topicName, details)
 
 		topics = append(topics, top)
 	}
 
-	err = cmd.assignTopicConsumers(admin, topics)
-	if err != nil {
-		return nil, err
+	if withConsumers {
+		err = cmd.assignTopicConsumers(admin, topics)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	sort.Slice(topics, func(i, j int) bool {
@@ -151,10 +153,21 @@ func (cmd *command) fetchTopics(client sarama.Client, admin sarama.ClusterAdmin,
 	return topics, nil
 }
 
-func (*command) fetchTopicMetaData(client sarama.Client, topics []string) (map[string]*sarama.TopicMetadata, error) {
-	b, err := client.Controller()
+type TopicDetail struct {
+	sarama.TopicDetail
+	Partitions []*sarama.PartitionMetadata
+}
+
+func (*command) fetchTopicMetaData(client sarama.Client, topics []string) (map[string]TopicDetail, error) {
+	brokers := client.Brokers()
+	if len(brokers) == 0 {
+		return nil, errors.New("no available broker")
+	}
+
+	b := brokers[rand.Intn(len(brokers))]
+	err := b.Open(client.Config())
 	if err != nil {
-		return nil, fmt.Errorf("failed to get cluster controller broker: %w", err)
+		return nil, fmt.Errorf("failed to open connection to broker")
 	}
 
 	req := &sarama.MetadataRequest{Topics: topics}
@@ -163,9 +176,56 @@ func (*command) fetchTopicMetaData(client sarama.Client, topics []string) (map[s
 		return nil, fmt.Errorf("failed to get cluster meta data: %w", err)
 	}
 
-	topicMeta := map[string]*sarama.TopicMetadata{}
+	topicMeta := map[string]TopicDetail{}
+	var describeConfigsResources []*sarama.ConfigResource
 	for _, meta := range metaDataResp.Topics {
-		topicMeta[meta.Name] = meta
+		details := sarama.TopicDetail{
+			NumPartitions: int32(len(meta.Partitions)),
+		}
+
+		if len(meta.Partitions) > 0 {
+			details.ReplicaAssignment = map[int32][]int32{}
+			for _, partition := range meta.Partitions {
+				details.ReplicaAssignment[partition.ID] = partition.Replicas
+			}
+			details.ReplicationFactor = int16(len(meta.Partitions[0].Replicas))
+		}
+
+		topicMeta[meta.Name] = TopicDetail{
+			TopicDetail: details,
+			Partitions:  meta.Partitions,
+		}
+
+		// we populate the resources we want to describe from the MetadataResponse
+		describeConfigsResources = append(describeConfigsResources, &sarama.ConfigResource{
+			Type: sarama.TopicResource,
+			Name: meta.Name,
+		})
+	}
+
+	// Send the DescribeConfigsRequest
+	describeConfigsReq := &sarama.DescribeConfigsRequest{
+		Resources: describeConfigsResources,
+	}
+	describeConfigsResp, err := b.DescribeConfigs(describeConfigsReq)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, resource := range describeConfigsResp.Resources {
+		topicDetails := topicMeta[resource.Name]
+		topicDetails.ConfigEntries = make(map[string]*string)
+
+		for _, entry := range resource.Configs {
+			// only include non-default non-sensitive config
+			// (don't actually think topic config will ever be sensitive)
+			if entry.Default || entry.Sensitive {
+				continue
+			}
+			topicDetails.ConfigEntries[entry.Name] = &entry.Value
+		}
+
+		topicMeta[resource.Name] = topicDetails
 	}
 
 	return topicMeta, nil
@@ -176,9 +236,9 @@ func isIgnoredTopic(name string) bool {
 	return strings.HasPrefix(name, "_")
 }
 
-func (cmd *command) fetchTopicPartitions(client sarama.Client, topicName string, details sarama.TopicDetail, meta *sarama.TopicMetadata) []PartitionMetadata {
+func (cmd *command) fetchPartitionsOffsets(client sarama.Client, topicName string, details TopicDetail) []PartitionMetadata {
 	result := make([]PartitionMetadata, details.NumPartitions)
-	for i, p := range meta.Partitions {
+	for i, p := range details.Partitions {
 		offset, err := client.GetOffset(topicName, p.ID, sarama.OffsetNewest)
 		if err != nil {
 			cmd.logger.Printf("WARNING: Failed to fetch offset for topic %q partition %d: %v", topicName, p.ID, err)
@@ -259,7 +319,7 @@ func (*command) fetchTopicConsumers(admin sarama.ClusterAdmin, topics []Topic) (
 	return topicConsumers, nil
 }
 
-func (*command) getTopicRetention(details sarama.TopicDetail) string {
+func (*command) getTopicRetention(details TopicDetail) string {
 	r := details.ConfigEntries["retention.ms"]
 	if r == nil {
 		return ""
