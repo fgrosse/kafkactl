@@ -5,7 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-Nothing so far
+- Added support for username & password authentication (plaintext SASL)
+- Added support for client certificate authentication (TLS)
 
 ## [v1.1.0] - 2023-04-09
 - Fix Inconsistent meaning of --output=raw in get message and consume command (see fgrosse/kafkactl#2)
