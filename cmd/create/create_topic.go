@@ -101,7 +101,11 @@ func (cmd *command) createTopic(
 		}
 	}
 
-	conf := cmd.SaramaConfig()
+	conf, err := cmd.SaramaConfig()
+	if err != nil {
+		return fmt.Errorf("config: %w", err)
+	}
+
 	client, err := cmd.ConnectClient(conf)
 	if err != nil {
 		return err

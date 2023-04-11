@@ -15,7 +15,7 @@ type command struct {
 }
 
 type BaseCommand interface {
-	SaramaConfig() *sarama.Config
+	SaramaConfig() (*sarama.Config, error)
 	ConnectClient(*sarama.Config) (sarama.Client, error)
 }
 

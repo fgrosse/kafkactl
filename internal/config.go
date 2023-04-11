@@ -1,11 +1,16 @@
 package internal
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io"
 	"net/url"
+	"os"
 	"regexp"
+	"strings"
 
+	"github.com/Shopify/sarama"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 )
@@ -21,16 +26,28 @@ type Configuration struct {
 }
 
 type ContextConfiguration struct {
-	Name    string   `yaml:"name"`
-	Brokers []string `yaml:"brokers"`
+	Name    string            `yaml:"name"`
+	Brokers []string          `yaml:"brokers"`
+	Auth    AuthConfiguration `yaml:"auth,omitempty"`
 
 	SchemaRegistry SchemaRegistryConfiguration `yaml:"schema_registry,omitempty"`
 }
 
+type AuthConfiguration struct {
+	Method     string `yaml:"method,omitempty"` // either tls or sasl
+	RootCAFile string `yaml:"root_ca_file,omitempty"`
+
+	Username string `yaml:"username,omitempty"` // only used when method=sasl
+	Password string `yaml:"password,omitempty"` // only used when method=sasl
+
+	KeyFile         string `yaml:"key_file,omitempty"`         // only used when method=tls
+	CertificateFile string `yaml:"certificate_file,omitempty"` // only used when method=tls
+}
+
 type SchemaRegistryConfiguration struct {
 	URL      string `yaml:"url"`
-	Username string `yaml:"username"`
-	Password string `yaml:"password"`
+	Username string `yaml:"username,omitempty"`
+	Password string `yaml:"password,omitempty"`
 }
 
 type TopicConfig struct {
@@ -84,22 +101,23 @@ func SaveConfiguration(w io.Writer, conf *Configuration) error {
 	return enc.Close()
 }
 
-func (conf *Configuration) AddContext(name string, brokers ...string) error {
-	_, err := conf.Context(name)
+func (conf *Configuration) AddContext(contextConf ContextConfiguration) error {
+	_, err := conf.Context(contextConf.Name)
 	if err == nil {
-		return fmt.Errorf("there is already a context named %q", name)
+		return fmt.Errorf("there is already a context named %q", contextConf.Name)
 	}
 
-	conf.Contexts = append(conf.Contexts, ContextConfiguration{
-		Name:    name,
-		Brokers: brokers,
-	})
+	conf.Contexts = append(conf.Contexts, contextConf)
 
 	if conf.CurrentContext == "" {
-		conf.CurrentContext = name
+		conf.CurrentContext = contextConf.Name
 	}
 
 	return nil
+}
+
+func (conf *Configuration) GetCurrentContext() (ContextConfiguration, error) {
+	return conf.Context(conf.CurrentContext)
 }
 
 func (conf *Configuration) Context(name string) (ContextConfiguration, error) {
@@ -246,6 +264,71 @@ func (conf *Configuration) TopicConfig(topic string) (*TopicConfig, error) {
 	}
 
 	return nil, nil
+}
+
+func (conf *Configuration) SaramaConfig() (*sarama.Config, error) {
+	saramaConf := sarama.NewConfig()
+	saramaConf.Version = sarama.V1_1_0_0
+	saramaConf.ClientID = "kafkactl"
+	saramaConf.Metadata.Retry.Max = 0 // fail fast
+
+	err := conf.configureAuth(saramaConf)
+	return saramaConf, err
+}
+
+func (conf *Configuration) configureAuth(saramaConf *sarama.Config) error {
+	contextConf, err := conf.GetCurrentContext()
+	if err != nil {
+		return err
+	}
+
+	if contextConf.Auth.RootCAFile != "" {
+		caCert, err := os.ReadFile(contextConf.Auth.RootCAFile)
+		if err != nil {
+			return fmt.Errorf("failed to read root CA file: %w", err)
+		}
+
+		caCertPool := x509.NewCertPool()
+		ok := caCertPool.AppendCertsFromPEM(caCert)
+		if !ok {
+			return fmt.Errorf("failed to parse root certificate")
+		}
+
+		saramaConf.Net.TLS.Enable = true
+		saramaConf.Net.TLS.Config = &tls.Config{
+			RootCAs: caCertPool,
+		}
+	}
+
+	switch strings.ToLower(contextConf.Auth.Method) {
+	case "sasl":
+		if contextConf.Auth.Username == "" {
+			return fmt.Errorf(`auth mode "sasl" requires a username to be configured`)
+		}
+
+		saramaConf.Net.SASL.Enable = true
+		saramaConf.Net.SASL.Mechanism = sarama.SASLTypePlaintext
+		saramaConf.Net.SASL.User = contextConf.Auth.Username
+		saramaConf.Net.SASL.Password = contextConf.Auth.Password
+
+	case "tls":
+		if contextConf.Auth.CertificateFile == "" || contextConf.Auth.KeyFile == "" {
+			return fmt.Errorf(`auth mode "tls" requires a certifiacte and key to be configured`)
+		}
+
+		keypair, err := tls.LoadX509KeyPair(contextConf.Auth.CertificateFile, contextConf.Auth.KeyFile)
+		if err != nil {
+			return fmt.Errorf("failed to load client certificate and key file: %w", err)
+		}
+
+		if saramaConf.Net.TLS.Config == nil {
+			saramaConf.Net.TLS.Config = new(tls.Config)
+		}
+
+		saramaConf.Net.TLS.Config.Certificates = []tls.Certificate{keypair}
+	}
+
+	return nil
 }
 
 func ensurePort(addr string) string {
