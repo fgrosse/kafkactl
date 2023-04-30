@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 - Added support for username & password authentication (plaintext SASL)
 - Added support for client certificate authentication (TLS)
+- Significantly improve query performance of `kafkactl get topics`, thus making it an option for larger Kafka clusters
 
 ## [v1.1.0] - 2023-04-09
 - Fix Inconsistent meaning of --output=raw in get message and consume command (see fgrosse/kafkactl#2)
