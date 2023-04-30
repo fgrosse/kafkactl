@@ -108,10 +108,6 @@ func (cmd *command) fetchTopics(client sarama.Client, topicsNames []string, rege
 		return nil, err
 	}
 
-	// TODO: re-enable or remove regex feature
-	//       To do this we should split the calls to first fetch really only
-	//       topic names, then filter them with the regexp and only then make
-	//       the more expensive calls to fetch meta data
 	var result []Topic
 	for topicName, topic := range topics {
 		t := Topic{
