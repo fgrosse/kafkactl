@@ -181,7 +181,7 @@ func (cmd *command) getConsumerGroup(groupID string) (ConsumerGroup, error) {
 		}
 
 		for _, t := range meta.Topics {
-			if isIgnoredTopic(t) {
+			if isInternalTopic(t) {
 				continue
 			}
 
