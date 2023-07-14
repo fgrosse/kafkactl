@@ -63,7 +63,15 @@ All of them will have the same partition and replication settings from the flags
 	return createTopicCmd
 }
 
-func (cmd *command) createTopic(names []string, partitions int32, replicas int16, timeout time.Duration, ignoreExistingTopics bool, retention time.Duration, configValues []string) error {
+func (cmd *command) createTopic(
+	names []string,
+	partitions int32,
+	replicas int16,
+	timeout time.Duration,
+	ignoreExistingTopics bool,
+	retention time.Duration,
+	configValues []string,
+) error {
 	req := &sarama.CreateTopicsRequest{
 		TopicDetails: make(map[string]*sarama.TopicDetail),
 		Timeout:      timeout,
