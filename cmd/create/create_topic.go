@@ -36,7 +36,10 @@ All of them will have the same partition and replication settings from the flags
   kafkactl create topic "foobar" --partitions=2 --replicas=3 --retention=7d
 
   # Try to create a topic but do not return an error (non zero status code) if it already exists
-  kafkactl create topic "foobar" --if-not-exists`,
+  kafkactl create topic "foobar" --if-not-exists
+
+  # Create topic "foobar" with compaction enabled
+  kafkactl create topic "foobar" --with-config "cleanup.policy=compact"`,
 		RunE: func(_ *cobra.Command, args []string) error {
 			names := args
 			partitions := viper.GetInt32("partitions")
@@ -44,7 +47,8 @@ All of them will have the same partition and replication settings from the flags
 			timeout := viper.GetDuration("timeout")
 			ifNotExists := viper.GetBool("if-not-exists")
 			retention := viper.GetDuration("retention")
-			return cmd.createTopic(names, partitions, replicas, timeout, ifNotExists, retention)
+			configValues := viper.GetStringSlice("with-config")
+			return cmd.createTopic(names, partitions, replicas, timeout, ifNotExists, retention, configValues)
 		},
 	}
 
@@ -54,18 +58,12 @@ All of them will have the same partition and replication settings from the flags
 	flags.Duration("timeout", 10*time.Second, "Timeout for Kafka requests")
 	flags.Bool("if-not-exists", false, "Do not fail if the topic already exists")
 	flags.Duration("retention", 0, "Maximum time to retain messages in this topic. Leave empty for cluster default")
+	flags.StringSlice("with-config", nil, "Set topic configuration values in key=value format (can be passed multiple times)")
 
 	return createTopicCmd
 }
 
-func (cmd *command) createTopic(
-	names []string,
-	partitions int32,
-	replicas int16,
-	timeout time.Duration,
-	ignoreExistingTopics bool,
-	retention time.Duration,
-) error {
+func (cmd *command) createTopic(names []string, partitions int32, replicas int16, timeout time.Duration, ignoreExistingTopics bool, retention time.Duration, configValues []string) error {
 	req := &sarama.CreateTopicsRequest{
 		TopicDetails: make(map[string]*sarama.TopicDetail),
 		Timeout:      timeout,
@@ -79,10 +77,24 @@ func (cmd *command) createTopic(
 		return errors.New("must have at least one replica")
 	}
 
-	var configs map[string]*string
+	configs := map[string]*string{}
 	if retention > 0 {
 		retentionMillis := fmt.Sprint(int64(retention.Seconds()) * 1000)
-		configs = map[string]*string{"retention.ms": &retentionMillis}
+		configs["retention.ms"] = &retentionMillis
+	}
+
+	for _, line := range configValues {
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) < 2 {
+			return fmt.Errorf("--config value %q is missing a value", line)
+		}
+
+		k, v := parts[0], parts[1]
+		configs[k] = &v
+	}
+
+	if len(configs) == 0 {
+		configs = nil
 	}
 
 	for _, topicName := range names {
