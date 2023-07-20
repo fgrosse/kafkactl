@@ -259,9 +259,9 @@ func (cmd *command) fetchPartitionsOffsets(client sarama.Client, topicName strin
 		wg.Add(1)
 		go func(partition *sarama.PartitionMetadata) {
 			defer wg.Done()
-			meta, err := cmd.fetchPartitionsOffset(client, topicName, p)
+			meta, err := cmd.fetchPartitionsOffset(client, topicName, partition)
 			if err != nil {
-				cmd.logger.Printf("ERROR: Failed to fetch offset for topic %q partition %d: %v", topicName, p.ID, err)
+				cmd.logger.Printf("ERROR: Failed to fetch offset for topic %q partition %d: %v", topicName, partition.ID, err)
 				return
 			}
 
