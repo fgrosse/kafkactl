@@ -119,7 +119,10 @@ func (cmd *command) consume(ctx context.Context, topic string, partitions []int,
 	for msg := range messages {
 		if outputEncoding == "raw" {
 			_, err := os.Stdout.Write(msg.Value)
-			return err
+			if err != nil {
+				return err
+			}
+			continue
 		}
 
 		decoded, err := dec.Decode(msg)
