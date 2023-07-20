@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 - Fix `kafkactl consume` when outputing raw messages
+- Fix bug in `kafkactl get topics` that caused wrong partition IDs in JSON output
 - Add `--with-config` flag to `kafkactl create topic`
 
 ## [v1.2.0] - 2023-04-30
