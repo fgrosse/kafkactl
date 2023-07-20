@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+Nothing so far
+
+## [v1.3.0] - 2023-07-20
 - Fix `kafkactl consume` when outputing raw messages
 - Fix bug in `kafkactl get topics` that caused wrong partition IDs in JSON output
 - Add `--with-config` flag to `kafkactl create topic`
@@ -26,7 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v1.0.0] - 2023-03-07
 - Initial release
 
-[Unreleased]: https://github.com/fgrosse/kafkactl/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/fgrosse/kafkactl/compare/v1.3.0...HEAD
+[v1.3.0]: https://github.com/fgrosse/kafkactl/compare/v1.2.0...v1.3.0
 [v1.2.0]: https://github.com/fgrosse/kafkactl/compare/v1.1.0...v1.2.0
 [v1.1.0]: https://github.com/fgrosse/kafkactl/compare/v1.0.0...v1.1.0
 [v1.0.0]: https://github.com/fgrosse/kafkactl/releases/tag/v1.0.0
