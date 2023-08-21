@@ -89,7 +89,7 @@ func (cmd *command) getConfig(encoding, topic string, args []string) error {
 		}
 
 		req = sarama.ConfigResource{
-			Type:        sarama.ClusterResource,
+			Type:        sarama.BrokerResource,
 			Name:        fmt.Sprint(c.ID()),
 			ConfigNames: args,
 		}

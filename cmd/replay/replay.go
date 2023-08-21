@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Shopify/sarama"
 	"github.com/fgrosse/cli"
@@ -503,6 +504,7 @@ func (cmd *command) sendMessages(
 		if err != nil {
 			numErrors++
 			cmd.logger.Printf("Error: failed to send message to destination topic: %v", err)
+			time.Sleep(time.Second)
 			continue
 		}
 

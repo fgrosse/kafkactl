@@ -122,7 +122,7 @@ func fetchOffsetRequest(topic string, partition int32, offset int64, fetchSizeBy
 		Isolation: sarama.ReadUncommitted,
 	}
 
-	req.AddBlock(topic, partition, offset, fetchSizeBytes)
+	req.AddBlock(topic, partition, offset, fetchSizeBytes, -1)
 
 	return req
 }
