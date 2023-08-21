@@ -127,7 +127,8 @@ func (cmd *command) consume(ctx context.Context, topic string, partitions []int,
 
 		decoded, err := dec.Decode(msg)
 		if err != nil {
-			return fmt.Errorf("failed to decode message from Kafka: %w", err)
+			cmd.logger.Printf("ERROR: failed to decode message from partition %d at offset %d: %s", msg.Partition, msg.Offset, err)
+			continue
 		}
 
 		var out = decoded.Value
