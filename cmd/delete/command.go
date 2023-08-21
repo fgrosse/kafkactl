@@ -34,6 +34,7 @@ func Command(base BaseCommand, logger, debug *log.Logger) *cobra.Command {
 	}
 
 	cmd.AddCommand(cmd.DeleteTopicCmd())
+	cmd.AddCommand(cmd.DeleteConsumerGroupCmd())
 
 	return cmd.Command
 }
