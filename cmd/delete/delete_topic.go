@@ -17,14 +17,6 @@ func (cmd *command) DeleteTopicCmd() *cobra.Command {
 		Aliases: []string{"topics"},
 		Args:    cobra.ArbitraryArgs,
 		Short:   "Delete one or many topics",
-		Long: `Delete one or many topics
-
-Create topics by passing at least one topic name as arguments. You can control
-the amount of partitions, the replication factor and other settings using flags.
-
-You can pass multiple topic names to create multiple topics at the same time.
-All of them will have the same partition and replication settings from the flags.
-`,
 		Example: `
   # Delete a single topic called "foo"
   kafkactl delete topic foo
