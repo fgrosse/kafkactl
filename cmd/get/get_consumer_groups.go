@@ -177,7 +177,8 @@ func (cmd *command) getConsumerGroup(groupID string) (ConsumerGroup, error) {
 
 		meta, err := m.GetMemberMetadata()
 		if err != nil {
-			return description, fmt.Errorf("invalid member meta data in client %q: %w", id, err)
+			cmd.logger.Printf("ERROR: invalid member meta data in client %q: %s", id, err)
+			continue
 		}
 
 		for _, t := range meta.Topics {

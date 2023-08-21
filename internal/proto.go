@@ -67,7 +67,7 @@ func (d *ProtoDecoder) decode(value []byte) (json.RawMessage, error) {
 	protoMsg := dynamic.NewMessage(d.typ)
 	err := protoMsg.Unmarshal(value)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode message as proto %s: %w", d.typ.GetName(), err)
+		return nil, fmt.Errorf("failed to decode message as proto %s: %w", d.typ.GetFullyQualifiedName(), err)
 	}
 
 	marshaler := &jsonpb.Marshaler{

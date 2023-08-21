@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 - Omit empty fields from configuration file
+- Do not treat decoding errors as fatal when consuming messages
 
 ## [v1.3.0] - 2023-07-20
 - Fix `kafkactl consume` when outputing raw messages
