@@ -52,22 +52,17 @@ type SchemaRegistryConfiguration struct {
 
 type TopicConfig struct {
 	Name   string            `yaml:"name"`
-	Schema TopicSchemaConfig `yaml:"schema"`
+	Schema TopicSchemaConfig `yaml:"schema,omitempty"`
 }
 
 type TopicSchemaConfig struct {
 	Type  string           `yaml:"type"` // "avro" or "proto"
-	Proto TopicProtoConfig `yaml:"proto"`
+	Proto TopicProtoConfig `yaml:"proto,omitempty"`
 }
 
 type TopicProtoConfig struct {
-	Type string `yaml:"type"`
-	File string `yaml:"file"`
-}
-
-type TopicAvroConfig struct {
-	RegistryURL     string `yaml:"registry_url"`
-	PrintAvroSchema bool   `yaml:"print_avro_json"`
+	Type string `yaml:"type,omitempty"`
+	File string `yaml:"file,omitempty"`
 }
 
 type GlobalProtoDecoderConfig struct {
