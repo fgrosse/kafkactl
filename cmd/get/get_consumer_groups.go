@@ -46,19 +46,19 @@ type GroupOffset struct {
 
 func (cmd *command) GetConsumerGroupsCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "consumers [name]...",
+		Use:     "consumer-group [name]...",
 		Args:    cobra.MaximumNArgs(1),
-		Aliases: []string{"consumer", "consumer-groups", "consumer-group"},
+		Aliases: []string{"consumer-groups", "consumer", "consumers", "group", "groups"},
 		Short:   "List all consumer groups or display information only for a specific consumer group",
 		Example: `
   # Show a table of all consumer groups
-  kafkactl get consumers
+  kafkactl get consumer-group
 
   # Show only the consumers named "example1" and example"3"
-  kafkactl get consumers example1 example3
+  kafkactl get consumer-group example1 example3
 
   # Show all information about a specific consumer group as JSON
-  kafkactl get consumer "example-consumer" -o json`,
+  kafkactl get consumer-group "example-consumer" -o json`,
 		RunE: func(_ *cobra.Command, args []string) error {
 			var name string
 			if len(args) > 0 {
