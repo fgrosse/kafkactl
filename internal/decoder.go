@@ -39,9 +39,7 @@ func NewTopicDecoder(topic string, conf Configuration) (Decoder, error) {
 			return nil, fmt.Errorf(`topic schema type is "avro"" but schema registry config is missing in context configuration`)
 		}
 
-		dec := NewAvroDecoder(registry)
-
-		return dec, nil
+		return NewAvroDecoder(registry), nil
 
 	case topicConf.Schema.Type == "proto":
 		return nil, fmt.Errorf("reading proto schema from the Schema Registy is not yet supported. Please configure the proto type directly in the topic schema configuration")
