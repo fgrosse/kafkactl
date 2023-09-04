@@ -125,10 +125,17 @@ func (cmd *command) consume(ctx context.Context, topic string, partitions []int,
 			continue
 		}
 
-		decoded, err := dec.Decode(msg)
-		if err != nil {
-			cmd.logger.Printf("ERROR: failed to decode message from partition %d at offset %d: %s", msg.Partition, msg.Offset, err)
-			continue
+		var decoded *internal.Message
+		if len(msg.Value) == 0 {
+			// render tombstones messages by printing them as "null"
+			decoded = internal.NewMessage(msg)
+			decoded.Value = nil
+		} else {
+			decoded, err = dec.Decode(msg)
+			if err != nil {
+				cmd.logger.Printf("ERROR: failed to decode message from partition %d at offset %d: %s", msg.Partition, msg.Offset, err)
+				continue
+			}
 		}
 
 		var out = decoded.Value
