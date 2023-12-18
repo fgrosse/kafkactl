@@ -51,8 +51,11 @@ func NewTopicDecoder(topic string, conf Configuration) (Decoder, error) {
 
 		return NewProtoDecoder(ProtoConfig{
 			Includes: conf.Proto.Includes,
-			File:     topicConf.Schema.Proto.File,
-			Type:     topicConf.Schema.Proto.Type,
+			Key:      topicConf.Schema.Key,
+			Value: SchemaConfig{
+				File: topicConf.Schema.Proto.File,
+				Type: topicConf.Schema.Proto.Type,
+			},
 		})
 	default:
 		return new(StringDecoder), nil
@@ -72,13 +75,16 @@ func (d *StringDecoder) Decode(kafkaMsg *sarama.ConsumerMessage) (*Message, erro
 // NewMessage creates a new Message from a given Kafka message.
 // The Key and Value are copied into the Message as is (i.e. without decoding).
 func NewMessage(m *sarama.ConsumerMessage) *Message {
+	ts := m.Timestamp.UTC()
+	ts = ts.Truncate(time.Second)
+
 	msg := &Message{
 		Key:       m.Key,
 		Value:     m.Value,
 		Topic:     m.Topic,
 		Partition: m.Partition,
 		Offset:    m.Offset,
-		Timestamp: m.Timestamp,
+		Timestamp: ts,
 	}
 
 	msg.Headers = map[string][]string{}
