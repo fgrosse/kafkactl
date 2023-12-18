@@ -2,6 +2,7 @@ package get
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"os"
@@ -41,7 +42,7 @@ func (cmd *command) GetMessageCmd() *cobra.Command {
 	flags.Int32("partition", 0, "Kafka topic partition")
 
 	// change default for --output flag
-	flags.StringP("output", "o", "json", "Output format. One of json|raw")
+	flags.StringP("output", "o", "json", "Output format. One of json|raw|base64")
 
 	_ = getMessageCmd.MarkFlagRequired("offset")
 	_ = getMessageCmd.MarkFlagRequired("topic")
@@ -50,7 +51,7 @@ func (cmd *command) GetMessageCmd() *cobra.Command {
 }
 
 func (cmd *command) getMessage(ctx context.Context, offset, topic string, partition int32, encoding string) error {
-	if encoding != "json" && encoding != "raw" {
+	if encoding != "json" && encoding != "raw" && encoding != "base64" {
 		return errors.New("only JSON and raw output are supported by this sub command")
 	}
 
@@ -72,17 +73,29 @@ func (cmd *command) getMessage(ctx context.Context, offset, topic string, partit
 
 		msg, err := cmd.fetchMessageForOffset(topic, partition, int64(offset))
 		if err != nil {
-			return err
+			return fmt.Errorf("fetch message: %w", err)
 		}
 
-		if encoding == "raw" {
+		switch encoding {
+		case "raw":
 			_, err := os.Stdout.Write(msg.Value)
-			return err
+			fmt.Fprintln(os.Stdout)
+			if err != nil {
+				return fmt.Errorf("write: %w", err)
+			}
+			return nil
+		case "base64":
+			_, err := base64.NewEncoder(base64.StdEncoding, os.Stdout).Write(msg.Value)
+			fmt.Fprintln(os.Stdout)
+			if err != nil {
+				return fmt.Errorf("write: %w", err)
+			}
+			return nil
 		}
 
 		decoded, err := dec.Decode(msg)
 		if err != nil {
-			return err
+			return fmt.Errorf("decode: %w", err)
 		}
 
 		return cli.Print(encoding, decoded)
