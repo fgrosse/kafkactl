@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 - Support tombstone messages (i.e., messages without payload)
+- Support for Protocol buffers encoded Kafka message keys 
 
 ## [v1.4.0] - 2023-08-21
 - Omit empty fields from configuration file
