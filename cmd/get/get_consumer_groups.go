@@ -3,6 +3,7 @@ package get
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -22,8 +23,8 @@ type ConsumerGroup struct {
 	CoordinatorAddr string        `table:"-"`
 	Members         []GroupMember `table:"-"`
 	Offsets         []GroupOffset `table:"-"`
-	Clients         string        `table:"CLIENTS" json:"-" yaml:"-" table:"CLIENTS"`
-	OffsetsSummary  string        `table:"OFFSETS" json:"-" yaml:"-"`
+	Clients         string        `table:"-" json:"-" yaml:"-"`
+	OffsetsSummary  string        `table:"-" json:"-" yaml:"-"`
 }
 
 // GroupMember contains information displayed by "kafkactl get consumer".
@@ -45,7 +46,7 @@ type GroupOffset struct {
 }
 
 func (cmd *command) GetConsumerGroupsCmd() *cobra.Command {
-	return &cobra.Command{
+	getConsumerGroupsCmd := &cobra.Command{
 		Use:     "consumer-group [name]...",
 		Args:    cobra.MaximumNArgs(1),
 		Aliases: []string{"consumer-groups", "consumer", "consumers", "group", "groups"},
@@ -64,17 +65,57 @@ func (cmd *command) GetConsumerGroupsCmd() *cobra.Command {
 			if len(args) > 0 {
 				name = args[0]
 			}
+
+			fetchOffsets := viper.GetBool("fetch-offsets")
+			topicFilter := viper.GetString("topic")
+
+			regex := viper.GetString("regex")
 			encoding := viper.GetString("output")
-			return cmd.getConsumerGroups(name, encoding)
+			return cmd.getConsumerGroups(name, regex, fetchOffsets, topicFilter, encoding)
 		},
 	}
+
+	flags := getConsumerGroupsCmd.Flags()
+	flags.StringP("regex", "e", "", "only show groups which match this regular expression")
+	flags.Bool("fetch-offsets", false, `show consumer group topic offsets (slow on large clusters)`)
+	flags.String("topic", "", `show topic offsets for a specific topic only (faster on large clusters)`)
+
+	return getConsumerGroupsCmd
 }
 
-func (cmd *command) getConsumerGroups(name, encoding string) error {
+func (cmd *command) getConsumerGroups(name, regex string, fetchOffsets bool, topicFilter, encoding string) error {
+	var rexp *regexp.Regexp
+	if regex != "" {
+		var err error
+		rexp, err = regexp.Compile(regex)
+		if err != nil {
+			return fmt.Errorf("failed to compile regular expression: %w", err)
+		}
+	}
+
+	conf, err := cmd.SaramaConfig()
+	if err != nil {
+		return fmt.Errorf("config: %w", err)
+	}
+
+	admin, err := cmd.ConnectAdmin()
+	if err != nil {
+		return err
+	}
+
+	defer admin.Close()
+
+	client, err := cmd.ConnectClient(conf)
+	if err != nil {
+		return err
+	}
+
+	defer client.Close()
+
 	var groups []string
 	if name == "" {
 		var err error
-		groups, err = cmd.listGroups()
+		groups, err = cmd.listGroups(rexp)
 		if err != nil {
 			return fmt.Errorf("failed to list all consumer groups: %w", err)
 		}
@@ -82,9 +123,14 @@ func (cmd *command) getConsumerGroups(name, encoding string) error {
 		groups = []string{name}
 	}
 
+	groupDescriptions, err := admin.DescribeConsumerGroups(groups)
+	if err != nil {
+		return fmt.Errorf("failed to describe consumer groups: %w", err)
+	}
+
 	var result []ConsumerGroup
 	for _, group := range groups {
-		g, err := cmd.getConsumerGroup(group)
+		g, err := cmd.getConsumerGroup(client, group, groupDescriptions, fetchOffsets, topicFilter)
 		if err != nil {
 			return err
 		}
@@ -94,7 +140,7 @@ func (cmd *command) getConsumerGroups(name, encoding string) error {
 	return cli.Print(encoding, result)
 }
 
-func (cmd *command) listGroups() ([]string, error) {
+func (cmd *command) listGroups(regex *regexp.Regexp) ([]string, error) {
 	admin, err := cmd.ConnectAdmin()
 	if err != nil {
 		return nil, err
@@ -109,6 +155,10 @@ func (cmd *command) listGroups() ([]string, error) {
 
 	var groups []string
 	for name := range resp {
+		if regex != nil && !regex.MatchString(name) {
+			continue
+		}
+
 		groups = append(groups, name)
 	}
 
@@ -116,21 +166,10 @@ func (cmd *command) listGroups() ([]string, error) {
 	return groups, nil
 }
 
-func (cmd *command) getConsumerGroup(groupID string) (ConsumerGroup, error) {
+func (cmd *command) getConsumerGroup(client sarama.Client, groupID string, groupDescriptions []*sarama.GroupDescription, fetchOffsets bool, topicFilter string) (ConsumerGroup, error) {
 	var description ConsumerGroup
 
-	conf, err := cmd.SaramaConfig()
-	if err != nil {
-		return description, fmt.Errorf("config: %w", err)
-	}
-
-	client, err := cmd.ConnectClient(conf)
-	if err != nil {
-		return description, err
-	}
-
-	defer client.Close()
-
+	cmd.debug.Printf("Determining coordinator for group %q", groupID)
 	coordinator, err := client.Coordinator(groupID)
 	if err != nil {
 		return description, fmt.Errorf("failed to determine consumer group coordinator: %w", err)
@@ -139,28 +178,16 @@ func (cmd *command) getConsumerGroup(groupID string) (ConsumerGroup, error) {
 	description.CoordinatorID = coordinator.ID()
 	description.CoordinatorAddr = coordinator.Addr()
 
-	cmd.debug.Printf("Retrieving consumer meta data for group %q", groupID)
-	metadataReq := &sarama.ConsumerMetadataRequest{ConsumerGroup: groupID}
-	metadataResp, err := coordinator.GetConsumerMetadata(metadataReq)
-	if err != nil {
-		return description, fmt.Errorf("failed to get consumer meta data: %w", err)
-	}
-	if metadataResp.Err != sarama.ErrNoError {
-		return description, metadataResp.Err
+	var g *sarama.GroupDescription
+	for _, descr := range groupDescriptions {
+		if descr.GroupId == groupID {
+			g = descr
+			break
+		}
 	}
 
-	cmd.debug.Printf("Fetching group description for %q", groupID)
-	describeReq := &sarama.DescribeGroupsRequest{Groups: []string{groupID}}
-	describeResp, err := coordinator.DescribeGroups(describeReq)
-	if err != nil {
-		return description, fmt.Errorf("failed to get group description: %w", err)
-	}
-	if len(describeResp.Groups) != 1 {
-		return description, fmt.Errorf("unexpected number of groups in Kafka response: want 1 but got %d", len(describeResp.Groups))
-	}
-	g := describeResp.Groups[0]
-	if g.Err != sarama.ErrNoError {
-		return description, fmt.Errorf("group description error: %w", g.Err)
+	if g == nil {
+		return description, fmt.Errorf("missing group description for group %q", groupID)
 	}
 
 	description.GroupID = g.GroupId
@@ -180,6 +207,10 @@ func (cmd *command) getConsumerGroup(groupID string) (ConsumerGroup, error) {
 			cmd.logger.Printf("ERROR: invalid member meta data in client %q: %s", id, err)
 			continue
 		}
+		if meta == nil {
+			cmd.logger.Printf("ERROR: member metadata is nil for group %q", groupID)
+			continue
+		}
 
 		for _, t := range meta.Topics {
 			if isInternalTopic(t) {
@@ -187,7 +218,7 @@ func (cmd *command) getConsumerGroup(groupID string) (ConsumerGroup, error) {
 			}
 
 			mem.Topics = append(mem.Topics, t)
-			mem.UserData = meta.UserData
+			// mem.UserData = meta.UserData
 		}
 
 		description.Members = append(description.Members, mem)
@@ -195,10 +226,15 @@ func (cmd *command) getConsumerGroup(groupID string) (ConsumerGroup, error) {
 	}
 	description.Clients = strings.Trim(description.Clients, ",")
 
+	if !fetchOffsets {
+		return description, nil
+	}
+
 	var topics []string
-	if t := viper.GetString("topic"); t != "" {
-		topics = []string{t}
+	if topicFilter != "" {
+		topics = []string{topicFilter}
 	} else {
+		// TODO: only fetch topics consumed by this group
 		cmd.debug.Println("Fetching all topics and partitions")
 		topics, err = client.Topics()
 		if err != nil {
@@ -214,7 +250,7 @@ func (cmd *command) getConsumerGroup(groupID string) (ConsumerGroup, error) {
 		}
 	}
 
-	cmd.debug.Println("Fetching topic offsets")
+	cmd.debug.Println("Fetching topic offsets") // TODO: possible in a single request?
 	partitionOffsets := map[string]map[int32]int64{}
 	for topic, partitions := range topicPartitions {
 		topicOffsets := map[int32]int64{}
