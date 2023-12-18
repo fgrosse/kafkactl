@@ -6,7 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 - Support tombstone messages (i.e., messages without payload)
-- Support for Protocol buffers encoded Kafka message keys 
+- Support for Protocol buffers encoded Kafka message keys
+- Support base 64 output encoding in `kafkactl get message`
+- Add `--regex` flag to `kafkactl get group` to filter which consumer groups to show
+- Add `--fetch-offsets` flag to `kafkactl get group` to skip fetching consumer group offsets
+- Add `--topic` flag to let `kafkactl get group` only fetch offsets for a specific topic
 
 ## [v1.4.0] - 2023-08-21
 - Omit empty fields from configuration file
