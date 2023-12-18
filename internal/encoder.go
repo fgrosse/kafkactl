@@ -27,8 +27,11 @@ func NewTopicEncoder(topic string, conf Configuration) (Encoder, error) {
 
 		return NewProtoEncoder(ProtoConfig{
 			Includes: conf.Proto.Includes,
-			File:     topicConf.Schema.Proto.File,
-			Type:     topicConf.Schema.Proto.Type,
+			Key:      topicConf.Schema.Key,
+			Value: SchemaConfig{
+				File: topicConf.Schema.Proto.File,
+				Type: topicConf.Schema.Proto.Type,
+			},
 		})
 	default:
 		return new(StringEncoder), nil

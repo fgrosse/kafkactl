@@ -56,11 +56,12 @@ type TopicConfig struct {
 }
 
 type TopicSchemaConfig struct {
-	Type  string           `yaml:"type"` // "avro" or "proto"
-	Proto TopicProtoConfig `yaml:"proto,omitempty"`
+	Type  string       `yaml:"type,omitempty"` // "avro" or "proto"
+	Proto SchemaConfig `yaml:"proto,omitempty"`
+	Key   SchemaConfig `yaml:"key,omitempty"`
 }
 
-type TopicProtoConfig struct {
+type SchemaConfig struct {
 	Type string `yaml:"type,omitempty"`
 	File string `yaml:"file,omitempty"`
 }

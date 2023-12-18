@@ -65,8 +65,7 @@ func FetchMessages(broker *sarama.Broker, topic string, partition int32, offset 
 	var messages []*sarama.ConsumerMessage
 	for _, records := range block.RecordsSet {
 		if records.MsgSet != nil {
-			// For our current Kafka version messages are returned in this
-			// field but maybe newer versions may use RecordBatch.
+			// Old Kafka versions return messages in this field and newer versions use RecordBatch instead.
 			messages = append(messages, parseMessages(topic, partition, records.MsgSet)...)
 			isPartial = isPartial || records.MsgSet.PartialTrailingMessage
 		}
@@ -78,7 +77,15 @@ func FetchMessages(broker *sarama.Broker, topic string, partition int32, offset 
 	}
 
 	if len(messages) == 0 && isPartial {
+		if fetchSizeBytes == maxFetchSizeBytes {
+			return nil, errors.Errorf("received partial message but fetch size is already at maximum")
+		}
+
 		fetchSizeBytes *= 2
+		if fetchSizeBytes > maxFetchSizeBytes {
+			fetchSizeBytes = maxFetchSizeBytes
+		}
+
 		debugLogger.Printf("Received partial response and trying again with bigger fetch size offset=%v new-fetch-size=%d", offset, fetchSizeBytes)
 		return FetchMessages(broker, topic, partition, offset, fetchSizeBytes, debugLogger)
 	}
@@ -115,7 +122,7 @@ func fetchOffsetRequest(topic string, partition int32, offset int64, fetchSizeBy
 
 		// Version relates to the Kafka version of the server. Version 3
 		// can be used when the Kafka version is >= v0.10.0.
-		Version: 3,
+		Version: 5,
 
 		// Isolation is a feature of a newer Kafka version but I copied this
 		// setting here from the sarama library just in case upgrade one day.

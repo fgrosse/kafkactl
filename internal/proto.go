@@ -13,7 +13,8 @@ import (
 )
 
 type ProtoDecoder struct {
-	typ *desc.MessageDescriptor
+	key   *desc.MessageDescriptor
+	value *desc.MessageDescriptor
 }
 
 type ProtoEncoder struct {
@@ -22,8 +23,8 @@ type ProtoEncoder struct {
 
 type ProtoConfig struct {
 	Includes []string
-	File     string
-	Type     string
+	Key      SchemaConfig
+	Value    SchemaConfig
 }
 
 func NewProtoDecoder(conf ProtoConfig) (*ProtoDecoder, error) {
@@ -31,43 +32,61 @@ func NewProtoDecoder(conf ProtoConfig) (*ProtoDecoder, error) {
 		ImportPaths: conf.Includes,
 	}
 
-	dd, err := p.ParseFiles(conf.File)
+	files := []string{conf.Value.File}
+	if conf.Key.File != "" {
+		files = append(files, conf.Key.File)
+	}
+
+	dd, err := p.ParseFiles(files...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse proto: %w", err)
 	}
 
 	dec := &ProtoDecoder{}
 	for _, descr := range dd {
-		dec.typ = descr.FindMessage(conf.Type)
-		if dec.typ != nil {
-			break
+		if dec.value == nil {
+			dec.value = descr.FindMessage(conf.Value.Type)
+		}
+		if dec.key == nil {
+			dec.key = descr.FindMessage(conf.Key.Type)
 		}
 	}
 
-	if dec.typ == nil {
-		return nil, fmt.Errorf("could not find message %q", conf.Type)
+	if dec.value == nil {
+		return nil, fmt.Errorf("could not find message %q", conf.Value.Type)
 	}
 
 	return dec, nil
 }
 
 func (d *ProtoDecoder) Decode(kafkaMsg *sarama.ConsumerMessage) (*Message, error) {
-	val, err := d.decode(kafkaMsg.Value)
+	msg := NewMessage(kafkaMsg)
+	val, err := d.decode(d.value, kafkaMsg.Value)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("value: %w", err)
 	}
 
-	msg := NewMessage(kafkaMsg)
 	msg.Value = val
+
+	if d.key == nil {
+		return msg, nil
+	}
+
+	key, err := d.decode(d.key, kafkaMsg.Key)
+	if err != nil {
+		return nil, fmt.Errorf("key: %w", err)
+	}
+
+	msg.Key = key
 
 	return msg, nil
 }
 
-func (d *ProtoDecoder) decode(value []byte) (json.RawMessage, error) {
-	protoMsg := dynamic.NewMessage(d.typ)
+func (*ProtoDecoder) decode(descriptor *desc.MessageDescriptor, value []byte) (json.RawMessage, error) {
+	protoMsg := dynamic.NewMessage(descriptor)
 	err := protoMsg.Unmarshal(value)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode message as proto %s: %w", d.typ.GetFullyQualifiedName(), err)
+		return nil, fmt.Errorf("failed to decode message as proto %s: %w", descriptor.GetFullyQualifiedName(), err)
 	}
 
 	marshaler := &jsonpb.Marshaler{
@@ -90,21 +109,21 @@ func NewProtoEncoder(conf ProtoConfig) (*ProtoEncoder, error) {
 		ImportPaths: conf.Includes,
 	}
 
-	dd, err := p.ParseFiles(conf.File)
+	dd, err := p.ParseFiles(conf.Value.File)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse proto")
 	}
 
 	enc := &ProtoEncoder{}
 	for _, descr := range dd {
-		enc.typ = descr.FindMessage(conf.Type)
+		enc.typ = descr.FindMessage(conf.Value.Type)
 		if enc.typ != nil {
 			break
 		}
 	}
 
 	if enc.typ == nil {
-		return nil, errors.Errorf("could not find message %q", conf.Type)
+		return nil, errors.Errorf("could not find message %q", conf.Value.Type)
 	}
 
 	return enc, nil
