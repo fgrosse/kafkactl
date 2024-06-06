@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 	"github.com/fgrosse/cli"
 	"github.com/fgrosse/kafkactl/internal"
 	"github.com/spf13/cobra"

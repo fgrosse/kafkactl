@@ -3,9 +3,10 @@ package internal
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 )
 
 type Consumer struct {
@@ -18,8 +19,45 @@ type PartitionOffset struct {
 	Offset    int64 // can also be sarama.Newest or sarama.Oldest
 }
 
+// Consume reads and returns messages from a Kafka topic using the provided configuration.
+func Consume(ctx context.Context, client sarama.Client, topic string, partitions []int, offset int64, groupID string, logger *log.Logger) (<-chan *sarama.ConsumerMessage, error) {
+	if groupID != "" {
+		return JoinConsumerGroup(ctx, client, topic, groupID, logger)
+	}
+
+	c, err := sarama.NewConsumerFromClient(client)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create consumer: %w", err)
+	}
+
+	con := NewConsumer(c)
+	return con.Consume(ctx, topic, partitions, offset, logger)
+}
+
 func NewConsumer(con sarama.Consumer) *Consumer {
 	return &Consumer{con: con}
+}
+
+func (c *Consumer) Consume(ctx context.Context, topic string, partitions []int, offset int64, logger *log.Logger) (<-chan *sarama.ConsumerMessage, error) {
+	logger.Printf("Consuming messages from %s of topic %q starting at %s",
+		humanFriendlyPartitions(partitions), topic, humanFriendlyOffset(offset),
+	)
+
+	switch len(partitions) {
+	case 0:
+		return c.ConsumeAllPartitions(ctx, topic, offset)
+	case 1:
+		return c.ConsumePartition(ctx, topic, int32(partitions[0]), offset)
+	default:
+		pp := make([]PartitionOffset, len(partitions))
+		for i, p := range partitions {
+			pp[i] = PartitionOffset{
+				Partition: int32(p),
+				Offset:    offset,
+			}
+		}
+		return c.ConsumePartitions(ctx, topic, pp)
+	}
 }
 
 func (c *Consumer) ConsumePartition(ctx context.Context, topic string, partition int32, offset int64) (<-chan *sarama.ConsumerMessage, error) {
@@ -147,4 +185,37 @@ func (c *Consumer) connectPartitionConsumers(topic string, partitions []Partitio
 	}
 
 	return consumers, nil
+}
+
+func humanFriendlyPartitions(partitions []int) string {
+	switch len(partitions) {
+	case 0:
+		return "all partitions"
+	case 1:
+		return fmt.Sprintf("partition %d", partitions[0])
+	default:
+		descr := "partitions"
+		for i, p := range partitions {
+			switch i {
+			case 0:
+				descr += " " + fmt.Sprint(p)
+			case len(partitions) - 1:
+				descr += " & " + fmt.Sprint(p)
+			default:
+				descr += ", " + fmt.Sprint(p)
+			}
+		}
+		return descr
+	}
+}
+
+func humanFriendlyOffset(offset int64) string {
+	switch offset {
+	case sarama.OffsetNewest:
+		return "newest offset"
+	case sarama.OffsetOldest:
+		return "oldest offset"
+	default:
+		return fmt.Sprint("offset ", offset)
+	}
 }

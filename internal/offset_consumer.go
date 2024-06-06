@@ -7,7 +7,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 )
 
 type OffsetConsumer struct {

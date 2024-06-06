@@ -9,7 +9,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+
 	"github.com/fgrosse/kafkactl/cmd/config"
 	"github.com/fgrosse/kafkactl/cmd/consume"
 	"github.com/fgrosse/kafkactl/cmd/context"
@@ -18,10 +21,9 @@ import (
 	"github.com/fgrosse/kafkactl/cmd/get"
 	"github.com/fgrosse/kafkactl/cmd/produce"
 	"github.com/fgrosse/kafkactl/cmd/replay"
+	"github.com/fgrosse/kafkactl/cmd/search"
 	"github.com/fgrosse/kafkactl/cmd/update"
 	"github.com/fgrosse/kafkactl/internal"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 type Kafkactl struct {
@@ -62,6 +64,7 @@ func New() *Kafkactl {
 	cmd.AddCommand(produce.Command(cmd, logger, debug))
 	cmd.AddCommand(consume.Command(cmd, logger, debug))
 	cmd.AddCommand(replay.Command(cmd, logger, debug))
+	cmd.AddCommand(search.Command(cmd, logger))
 
 	cmd.PersistentPreRunE = cmd.initConfig
 

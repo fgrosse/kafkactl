@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 )
 
 type consumerGroupClient struct {
@@ -14,6 +14,8 @@ type consumerGroupClient struct {
 }
 
 func JoinConsumerGroup(ctx context.Context, client sarama.Client, topic, groupID string, logger *log.Logger) (<-chan *sarama.ConsumerMessage, error) {
+	logger.Printf("Consuming messages from topic %q via consumer group %q", topic, groupID)
+
 	c, err := sarama.NewConsumerGroupFromClient(groupID, client)
 	if err != nil {
 		return nil, fmt.Errorf("failed to creating consumer group client: %w", err)

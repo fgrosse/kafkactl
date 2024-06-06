@@ -3,7 +3,7 @@ package replay
 import (
 	"log"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 	"github.com/fgrosse/kafkactl/internal"
 	"github.com/spf13/cobra"
 )

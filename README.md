@@ -149,7 +149,7 @@ pick the tool that serves your use case best:
 
 ## Built With
 
-* [sarama](https://github.com/Shopify/sarama) - a Go library for Apache Kafka
+* [sarama](https://github.com/IBM/sarama) - a Go library for Apache Kafka
 * [confluent-kafka-go](github.com/confluentinc/confluent-kafka-go) - Confluent's Apache Kafka Golang client
 * [goavro](github.com/linkedin/goavro) - a library that encodes and decodes Avro data
 * [cobra](https://github.com/spf13/cobra) - a library to build powerful CLI applications

@@ -3,9 +3,10 @@ package consume
 import (
 	"log"
 
-	"github.com/Shopify/sarama"
-	"github.com/fgrosse/kafkactl/internal"
+	"github.com/IBM/sarama"
 	"github.com/spf13/cobra"
+
+	"github.com/fgrosse/kafkactl/internal"
 )
 
 type command struct {

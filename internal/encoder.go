@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 )
 
 type Encoder interface {

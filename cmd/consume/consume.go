@@ -7,11 +7,12 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 	"github.com/fgrosse/cli"
-	"github.com/fgrosse/kafkactl/internal"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/fgrosse/kafkactl/internal"
 )
 
 func (cmd *command) ConsumeCmd() *cobra.Command {
@@ -103,17 +104,22 @@ func (cmd *command) consume(ctx context.Context, topic string, partitions []int,
 		return err
 	}
 
-	var messages <-chan *sarama.ConsumerMessage
-	if groupID != "" {
-		messages, err = cmd.joinConsumerGroup(ctx, topic, groupID)
-		if err != nil {
-			return err
-		}
-	} else {
-		messages, err = cmd.simpleConsumer(ctx, topic, partitions, offset)
-		if err != nil {
-			return err
-		}
+	saramaConf, err := cmd.SaramaConfig()
+	if err != nil {
+		return fmt.Errorf("config: %w", err)
+	}
+
+	saramaConf.Consumer.Offsets.Initial = sarama.OffsetOldest
+	saramaConf.Consumer.Return.Errors = false // TODO
+
+	client, err := cmd.ConnectClient(saramaConf)
+	if err != nil {
+		return err
+	}
+
+	messages, err := internal.Consume(ctx, client, topic, partitions, offset, groupID, cmd.logger)
+	if err != nil {
+		return err
 	}
 
 	for msg := range messages {
@@ -155,96 +161,4 @@ func (cmd *command) consume(ctx context.Context, topic string, partitions []int,
 	}
 
 	return nil
-}
-
-func (cmd *command) joinConsumerGroup(ctx context.Context, topic, groupID string) (<-chan *sarama.ConsumerMessage, error) {
-	saramaConf, err := cmd.SaramaConfig()
-	if err != nil {
-		return nil, fmt.Errorf("config: %w", err)
-	}
-
-	saramaConf.Consumer.Return.Errors = false // TODO
-
-	client, err := cmd.ConnectClient(saramaConf)
-	if err != nil {
-		return nil, err
-	}
-
-	cmd.logger.Printf("Consuming messages from topic %q via consumer group %q",
-		topic, groupID,
-	)
-
-	return internal.JoinConsumerGroup(ctx, client, topic, groupID, cmd.logger)
-}
-
-func (cmd *command) simpleConsumer(ctx context.Context, topic string, partitions []int, offset int64) (<-chan *sarama.ConsumerMessage, error) {
-	saramaConf, err := cmd.SaramaConfig()
-	if err != nil {
-		return nil, fmt.Errorf("config: %w", err)
-	}
-
-	saramaConf.Consumer.Return.Errors = false // TODO
-
-	client, err := cmd.ConnectClient(saramaConf)
-	if err != nil {
-		return nil, err
-	}
-	c, err := sarama.NewConsumerFromClient(client)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create consumer: %w", err)
-	}
-
-	con := internal.NewConsumer(c)
-	cmd.logger.Printf("Consuming messages from %s of topic %q starting at %s",
-		humanFriendlyPartitions(partitions), topic, humanFriendlyOffset(offset),
-	)
-
-	switch len(partitions) {
-	case 0:
-		return con.ConsumeAllPartitions(ctx, topic, offset)
-	case 1:
-		return con.ConsumePartition(ctx, topic, int32(partitions[0]), offset)
-	default:
-		pp := make([]internal.PartitionOffset, len(partitions))
-		for i, p := range partitions {
-			pp[i] = internal.PartitionOffset{
-				Partition: int32(p),
-				Offset:    offset,
-			}
-		}
-		return con.ConsumePartitions(ctx, topic, pp)
-	}
-}
-
-func humanFriendlyPartitions(partitions []int) string {
-	switch len(partitions) {
-	case 0:
-		return "all partitions"
-	case 1:
-		return fmt.Sprintf("partition %d", partitions[0])
-	default:
-		descr := "partitions"
-		for i, p := range partitions {
-			switch i {
-			case 0:
-				descr += " " + fmt.Sprint(p)
-			case len(partitions) - 1:
-				descr += " & " + fmt.Sprint(p)
-			default:
-				descr += ", " + fmt.Sprint(p)
-			}
-		}
-		return descr
-	}
-}
-
-func humanFriendlyOffset(offset int64) string {
-	switch offset {
-	case sarama.OffsetNewest:
-		return "newest offset"
-	case sarama.OffsetOldest:
-		return "oldest offset"
-	default:
-		return fmt.Sprint("offset", offset)
-	}
 }

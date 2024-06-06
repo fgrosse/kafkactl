@@ -5,7 +5,7 @@ import (
 	"log"
 	"sync"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 )
 
 type RangeConsumer struct {

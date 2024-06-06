@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 	"github.com/fgrosse/cli"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"

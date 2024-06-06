@@ -10,7 +10,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 )
@@ -264,7 +264,7 @@ func (conf *Configuration) TopicConfig(topic string) (*TopicConfig, error) {
 
 func (conf *Configuration) SaramaConfig() (*sarama.Config, error) {
 	saramaConf := sarama.NewConfig()
-	saramaConf.Version = sarama.V1_1_0_0
+	saramaConf.Version = sarama.V0_11_0_2
 	saramaConf.ClientID = "kafkactl"
 	saramaConf.Metadata.Retry.Max = 0 // fail fast
 
