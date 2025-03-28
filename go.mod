@@ -1,13 +1,15 @@
 module github.com/fgrosse/kafkactl
 
-go 1.19
+go 1.22
+
+toolchain go1.24.1
 
 require (
 	github.com/Shopify/sarama v1.38.1
 	github.com/confluentinc/confluent-kafka-go/v2 v2.1.0
 	github.com/fatih/color v1.13.0
 	github.com/fgrosse/cli v0.0.0-20190104120053-ecd919dde986
-	github.com/golang/protobuf v1.5.3
+	github.com/golang/protobuf v1.5.4
 	github.com/jhump/protoreflect v1.14.1
 	github.com/linkedin/goavro/v2 v2.12.0
 	github.com/pkg/errors v0.9.1
@@ -54,7 +56,7 @@ require (
 	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	google.golang.org/genproto v0.0.0-20230331144136-dcfb400f0633 // indirect
-	google.golang.org/protobuf v1.30.0 // indirect
+	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
