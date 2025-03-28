@@ -9,7 +9,7 @@ require (
 	github.com/confluentinc/confluent-kafka-go/v2 v2.1.0
 	github.com/fatih/color v1.13.0
 	github.com/fgrosse/cli v0.0.0-20190104120053-ecd919dde986
-	github.com/golang/protobuf v1.5.3
+	github.com/golang/protobuf v1.5.4
 	github.com/jhump/protoreflect v1.14.1
 	github.com/linkedin/goavro/v2 v2.12.0
 	github.com/pkg/errors v0.9.1
